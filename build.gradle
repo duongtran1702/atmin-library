@@ -1,0 +1,180 @@
+plugins {
+    id 'java'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'maven-publish'
+    id 'signing'
+}
+
+group = 'io.github.duongtran1702'
+version = '1.0.3.Beta'
+description = 'atmin-library - Reusable Spring Boot common library by Atmin'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:4.0.6'
+    }
+}
+
+dependencies {
+    // Core Spring Boot (compileOnly - provided by consuming project)
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // Jackson (for JSON annotations)
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
+    compileOnly 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // Optional: Spring Security (for SecurityExceptionHandler)
+    compileOnly 'org.springframework.boot:spring-boot-starter-security'
+
+    // Optional: JWT (for SecurityExceptionHandler)
+    compileOnly 'io.jsonwebtoken:jjwt-api:0.12.6'
+
+    // Optional: Spring Data (for PageInfo)
+    compileOnly 'org.springframework.data:spring-data-commons'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Publishing configuration
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = 'Atmin Library'
+                description = 'Reusable Spring Boot common library for exception handling, API responses'
+                url = 'https://github.com/duongtran1702/atmin-library'
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'duongtran1702'
+                        name = 'Duong Tran'
+                        email = 'duong170226@gmail.com'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git://github.com/duongtran1702/atmin-library.git'
+                    developerConnection = 'scm:git:ssh://github.com/duongtran1702/atmin-library.git'
+                    url = 'https://github.com/duongtran1702/atmin-library'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "MavenCentral"
+            url = "https://central.sonatype.com/repository/maven-releases/"
+            credentials {
+                username = project.properties["username"] ?: System.getenv("username")
+                password = project.properties["password"] ?: System.getenv("password")
+            }
+        }
+        maven {
+            name = "LocalBundle"
+            url = layout.buildDirectory.dir("repo")
+        }
+    }
+}
+
+tasks.register('cleanRepo', Delete) {
+    delete layout.buildDirectory.dir("repo")
+}
+
+tasks.register('zipBundle', Zip) {
+    dependsOn 'cleanRepo', 'publishMavenJavaPublicationToLocalBundleRepository'
+    from layout.buildDirectory.dir("repo")
+    archiveFileName = "atmin-library-${version}-bundle.zip"
+    destinationDirectory = layout.buildDirectory.dir("distributions")
+}
+
+tasks.named('publishMavenJavaPublicationToLocalBundleRepository') {
+    dependsOn 'cleanRepo'
+}
+
+tasks.register('deploy') {
+    dependsOn 'zipBundle'
+    doLast {
+        def zipFile = layout.buildDirectory.file("distributions/atmin-library-${version}-bundle.zip").get().asFile
+        if (!zipFile.exists()) {
+            throw new GradleException("Zip bundle file not found: ${zipFile.absolutePath}")
+        }
+        
+        def username = project.properties["username"] ?: System.getenv("username")
+        def password = project.properties["password"] ?: System.getenv("password")
+        
+        if (!username || !password) {
+            throw new GradleException("Maven Central credentials (username/password) are not configured in gradle.properties.")
+        }
+        
+        def authString = "${username}:${password}"
+        def encodedAuth = java.util.Base64.getEncoder().encodeToString(authString.getBytes("UTF-8"))
+        
+        println "Uploading bundle to Sonatype Central Portal..."
+        
+        def boundary = "---------------------------" + System.currentTimeMillis()
+        def newline = "\r\n"
+        
+        def byteOutputStream = new java.io.ByteArrayOutputStream()
+        byteOutputStream.write(("--" + boundary + newline).getBytes("UTF-8"))
+        byteOutputStream.write(("Content-Disposition: form-data; name=\"bundle\"; filename=\"" + zipFile.name + "\"" + newline).getBytes("UTF-8"))
+        byteOutputStream.write(("Content-Type: application/zip" + newline + newline).getBytes("UTF-8"))
+        byteOutputStream.write(java.nio.file.Files.readAllBytes(zipFile.toPath()))
+        byteOutputStream.write(newline.getBytes("UTF-8"))
+        byteOutputStream.write(("--" + boundary + "--" + newline).getBytes("UTF-8"))
+        
+        def client = java.net.http.HttpClient.newHttpClient()
+        def uri = java.net.URI.create("https://central.sonatype.com/api/v1/publisher/upload?name=atmin-library-${version}&publishingType=USER_MANAGED")
+        
+        def request = java.net.http.HttpRequest.newBuilder()
+            .uri(uri)
+            .header("Authorization", "Bearer " + encodedAuth)
+            .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+            .POST(java.net.http.HttpRequest.BodyPublishers.ofByteArray(byteOutputStream.toByteArray()))
+            .build()
+            
+        def response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString())
+        
+        println "HTTP Status: " + response.statusCode()
+        println "Response: " + response.body()
+        
+        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            println "Upload successful! Check status on https://central.sonatype.com/"
+        } else {
+            throw new GradleException("Failed to upload bundle: HTTP ${response.statusCode()} - ${response.body()}")
+        }
+    }
+}
+
+signing {
+    required { gradle.taskGraph.hasTask("publish") && project.hasProperty("signing.keyId") }
+    sign publishing.publications.mavenJava
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
