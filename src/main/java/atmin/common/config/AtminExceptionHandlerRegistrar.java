@@ -1,11 +1,9 @@
 package atmin.common.config;
 
 import atmin.common.annotation.EnableAtminExceptionHandling;
-import atmin.common.exception.handler.CoreExceptionHandler;
-import atmin.common.exception.handler.SecurityExceptionHandler;
-import atmin.common.exception.handler.StorageExceptionHandler;
 import org.springframework.context.annotation.ImportSelector;
 import org.springframework.core.annotation.AnnotationAttributes;
+import org.springframework.util.ClassUtils;
 import org.springframework.core.type.AnnotationMetadata;
 
 import java.util.ArrayList;
@@ -18,8 +16,8 @@ import java.util.List;
  * <p>This class is not meant to be used directly. It is invoked automatically
  * when {@code @EnableAtminExceptionHandling} is placed on a configuration class.</p>
  *
- * <p><strong>Design note:</strong> This registrar imports the inner wrapper classes
- * from {@link AtminExceptionAutoConfiguration} which are annotated with
+ * <p><strong>Design note:</strong> This registrar imports package-private wrapper
+ * classes which are annotated with
  * {@code @ControllerAdvice}. This ensures {@code @ExceptionHandler} methods are
  * recognized by Spring without putting {@code @Component} on the handler classes
  * themselves (which would cause unwanted component scanning).</p>
@@ -38,16 +36,24 @@ public class AtminExceptionHandlerRegistrar implements ImportSelector {
         List<String> imports = new ArrayList<>();
 
         // Core handlers are always imported — use the ControllerAdvice wrapper
-        imports.add(AtminExceptionAutoConfiguration.CoreExceptionHandlerAdvice.class.getName());
+        imports.add(CoreExceptionHandlerAdvice.class.getName());
         imports.add(AtminExceptionPropertiesConfiguration.class.getName());
 
         if (attributes != null) {
             // Security handlers (JWT + Spring Security)
             if (attributes.getBoolean("enableSecurityHandlers")) {
-                if (isClassPresent("org.springframework.security.core.AuthenticationException")
-                        && isClassPresent("io.jsonwebtoken.JwtException")
-                        && isClassPresent("org.springframework.security.access.AccessDeniedException")) {
-                    imports.add(AtminExceptionAutoConfiguration.SecurityHandlerConfiguration.SecurityExceptionHandlerAdvice.class.getName());
+                boolean securityPresent = isClassPresent("org.springframework.security.core.AuthenticationException")
+                        && isClassPresent("org.springframework.security.access.AccessDeniedException");
+                boolean jwtPresent = isClassPresent("io.jsonwebtoken.JwtException");
+
+                if (securityPresent && jwtPresent) {
+                    imports.add(SecurityExceptionHandlerAdvice.class.getName());
+                }
+                else if (securityPresent) {
+                    imports.add(SpringSecurityExceptionHandlerAdvice.class.getName());
+                }
+                else if (jwtPresent) {
+                    imports.add(JwtExceptionHandlerAdvice.class.getName());
                 }
                 if (isClassPresent("org.springframework.security.web.AuthenticationEntryPoint")) {
                     imports.add(SecurityExceptionConfig.class.getName());
@@ -56,8 +62,12 @@ public class AtminExceptionHandlerRegistrar implements ImportSelector {
 
             // Storage handlers (file upload + cloud storage)
             if (attributes.getBoolean("enableStorageHandlers")) {
-                imports.add(AtminExceptionAutoConfiguration.StorageHandlerConfiguration.StorageExceptionHandlerAdvice.class.getName());
+                imports.add(StorageExceptionHandlerAdvice.class.getName());
             }
+        }
+
+        if (isClassPresent("jakarta.validation.ConstraintViolationException")) {
+            imports.add(ValidationExceptionHandlerAdvice.class.getName());
         }
 
         return imports.toArray(new String[0]);
@@ -68,11 +78,6 @@ public class AtminExceptionHandlerRegistrar implements ImportSelector {
      * Used to safely skip handler registration when optional dependencies are missing.
      */
     private boolean isClassPresent(String className) {
-        try {
-            Class.forName(className);
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
+        return ClassUtils.isPresent(className, getClass().getClassLoader());
     }
 }

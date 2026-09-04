@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -139,10 +140,23 @@ public class ApiErrorResponse {
      * @return ApiErrorResponse instance with auto-populated traceId
      */
     public static ApiErrorResponse of(HttpStatus httpStatus, String message, String path) {
+        return of((HttpStatusCode) httpStatus, message, path);
+    }
+
+    /**
+     * Create an error response from any Spring HTTP status code.
+     *
+     * @param httpStatus the HTTP status code
+     * @param message    the error message
+     * @param path       the request URI path
+     * @return ApiErrorResponse instance with auto-populated traceId
+     */
+    public static ApiErrorResponse of(HttpStatusCode httpStatus, String message, String path) {
+        HttpStatus knownStatus = HttpStatus.resolve(httpStatus.value());
         return ApiErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(httpStatus.value())
-                .error(httpStatus.getReasonPhrase())
+                .error(knownStatus != null ? knownStatus.getReasonPhrase() : "HTTP " + httpStatus.value())
                 .message(message)
                 .path(path)
                 .traceId(resolveTraceId())
@@ -207,11 +221,24 @@ public class ApiErrorResponse {
      * @return ApiErrorResponse with validation errors and auto-populated traceId
      */
     public static ApiErrorResponse validationError(String path, Map<String, String> errors) {
+        return validationError(path, "Validation failed", errors);
+    }
+
+    /**
+     * Create a validation error response with a configurable message.
+     *
+     * @param path    the request URI path
+     * @param message the validation summary
+     * @param errors  map of field name to error message
+     * @return ApiErrorResponse with validation errors and auto-populated traceId
+     */
+    public static ApiErrorResponse validationError(
+            String path, String message, Map<String, String> errors) {
         return ApiErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                .message("Validation failed")
+                .message(message)
                 .path(path)
                 .errors(errors)
                 .traceId(resolveTraceId())

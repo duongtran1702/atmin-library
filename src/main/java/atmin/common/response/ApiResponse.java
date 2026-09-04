@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 
 /**
  * Generic API response wrapper for successful and error responses.
@@ -82,6 +83,13 @@ public class ApiResponse<T> {
      * Create a success response with custom HTTP status.
      */
     public static <T> ApiResponse<T> success(HttpStatus httpStatus, String message, T data) {
+        return success((HttpStatusCode) httpStatus, message, data);
+    }
+
+    /**
+     * Create a success response with any Spring HTTP status code.
+     */
+    public static <T> ApiResponse<T> success(HttpStatusCode httpStatus, String message, T data) {
         return ApiResponse.<T>builder()
                 .success(true)
                 .status(httpStatus.value())
@@ -97,6 +105,18 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .success(true)
                 .status(HttpStatus.CREATED.value())
+                .message(message)
+                .data(data)
+                .build();
+    }
+
+    /**
+     * Create a 202 Accepted response with data.
+     */
+    public static <T> ApiResponse<T> accepted(String message, T data) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .status(HttpStatus.ACCEPTED.value())
                 .message(message)
                 .data(data)
                 .build();
@@ -167,6 +187,20 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    /**
+     * Create a paginated response directly from a Spring Data Page.
+     */
+    public static <T> ApiResponse<java.util.List<T>> pagePaginated(
+            String message, org.springframework.data.domain.Page<T> page) {
+        return ApiResponse.<java.util.List<T>>builder()
+                .success(true)
+                .status(HttpStatus.OK.value())
+                .message(message)
+                .data(page.getContent())
+                .page(PageInfo.from(page))
+                .build();
+    }
+
     // ======================== Error Factory Methods ========================
 
     /**
@@ -184,6 +218,13 @@ public class ApiResponse<T> {
      * Create an error response from HttpStatus enum.
      */
     public static <T> ApiResponse<T> error(HttpStatus httpStatus, String message) {
+        return error((HttpStatusCode) httpStatus, message);
+    }
+
+    /**
+     * Create an error response from any Spring HTTP status code.
+     */
+    public static <T> ApiResponse<T> error(HttpStatusCode httpStatus, String message) {
         return ApiResponse.<T>builder()
                 .success(false)
                 .status(httpStatus.value())

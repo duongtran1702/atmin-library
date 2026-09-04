@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
  * This prevents duplicate bean registration issues when both autoconfiguration
  * and manual @EnableAtminExceptionHandling are active.
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(AtminExceptionProperties.class)
 public class AtminExceptionPropertiesConfiguration {
 }

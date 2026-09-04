@@ -1,16 +1,18 @@
 package atmin.common.config;
 
 import atmin.common.response.ApiErrorResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 
@@ -18,8 +20,9 @@ import java.time.LocalDateTime;
  * Configuration for Spring Security filter-level exception entry point and access denied handlers.
  * It writes JSON responses in the format of ApiErrorResponse.
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @ConditionalOnClass({AuthenticationEntryPoint.class, AccessDeniedHandler.class})
+@ConditionalOnBean(ObjectMapper.class)
 @RequiredArgsConstructor
 public class SecurityExceptionConfig {
 
@@ -40,8 +43,8 @@ public class SecurityExceptionConfig {
                     .build();
 
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            objectMapper.writeValue(response.getOutputStream(), errorResponse);
         };
     }
 
@@ -59,8 +62,8 @@ public class SecurityExceptionConfig {
                     .build();
 
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            objectMapper.writeValue(response.getOutputStream(), errorResponse);
         };
     }
 }

@@ -153,7 +153,21 @@ public class PageInfo {
      * @return PageInfo instance with full pagination details
      */
     public static PageInfo of(int pageNumber, int pageSize, long totalElements) {
-        int totalPages = pageSize > 0 ? (int) Math.ceil((double) totalElements / pageSize) : 0;
+        if (pageNumber < 0) {
+            throw new IllegalArgumentException("pageNumber must be greater than or equal to 0");
+        }
+        if (pageSize <= 0) {
+            throw new IllegalArgumentException("pageSize must be greater than 0");
+        }
+        if (totalElements < 0) {
+            throw new IllegalArgumentException("totalElements must be greater than or equal to 0");
+        }
+
+        long calculatedPages = totalElements == 0 ? 0 : ((totalElements - 1) / pageSize) + 1;
+        if (calculatedPages > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("totalPages exceeds the supported integer range");
+        }
+        int totalPages = (int) calculatedPages;
         boolean isLast = pageNumber >= totalPages - 1;
         return PageInfo.builder()
                 .pageNumber(pageNumber)
@@ -163,6 +177,24 @@ public class PageInfo {
                 .hasNext(!isLast)
                 .first(pageNumber == 0)
                 .last(isLast)
+                .build();
+    }
+
+    /**
+     * Create pagination metadata for a no-count query without requiring a
+     * Spring Data Slice instance.
+     */
+    public static PageInfo slice(int pageNumber, int pageSize, boolean hasNext) {
+        if (pageNumber < 0) {
+            throw new IllegalArgumentException("pageNumber must be greater than or equal to 0");
+        }
+        if (pageSize <= 0) {
+            throw new IllegalArgumentException("pageSize must be greater than 0");
+        }
+        return PageInfo.builder()
+                .pageNumber(pageNumber)
+                .pageSize(pageSize)
+                .hasNext(hasNext)
                 .build();
     }
 }

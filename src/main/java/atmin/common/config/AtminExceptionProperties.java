@@ -1,8 +1,10 @@
 package atmin.common.config;
 
+import atmin.common.response.ApiErrorResponse;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.beans.factory.InitializingBean;
 
 /**
  * Configuration properties for customizing exception messages.
@@ -11,13 +13,48 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "atmin.exceptions")
 @Getter
 @Setter
-public class AtminExceptionProperties {
+public class AtminExceptionProperties implements InitializingBean {
+
+    /**
+     * Enables all Atmin exception-handler auto-configuration.
+     */
+    private boolean enabled = true;
+
+    /**
+     * Enables the optional Spring Security/JWT controller handlers.
+     */
+    private boolean securityEnabled = true;
+
+    /**
+     * Enables the optional Spring Security filter response handlers.
+     */
+    private boolean securityFilterEnabled = true;
+
+    /**
+     * Enables file-upload and cloud-storage handlers.
+     */
+    private boolean storageEnabled = true;
+
+    /**
+     * MDC key used to resolve a trace ID.
+     */
+    private String traceIdMdcKey = "traceId";
 
     /**
      * Message when validation fails (MethodArgumentNotValidException).
      * Default is "Validation failed".
      */
     private String validationFailed = "Validation failed";
+
+    /**
+     * Message when a request body contains malformed or unreadable JSON.
+     */
+    private String malformedRequest = "Request body is malformed or unreadable.";
+
+    /**
+     * Message when a required request parameter or request part is missing.
+     */
+    private String missingRequestValue = "A required request value is missing.";
 
     /**
      * Message when an unexpected internal server error occurs (RuntimeException).
@@ -48,4 +85,9 @@ public class AtminExceptionProperties {
      * Default is "Access Denied".
      */
     private String securityAccessDenied = "Access Denied";
+
+    @Override
+    public void afterPropertiesSet() {
+        ApiErrorResponse.setMdcKey(traceIdMdcKey);
+    }
 }

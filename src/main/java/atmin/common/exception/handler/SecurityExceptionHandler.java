@@ -41,10 +41,10 @@ public class SecurityExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleJwtException(
             io.jsonwebtoken.JwtException ex, HttpServletRequest request) {
 
-        log.warn("JWT authentication failed: {}", ex.getMessage());
+        log.warn("JWT authentication failed at {}: {}", request.getRequestURI(), ex.getMessage());
 
         ApiErrorResponse errorResponse = ApiErrorResponse.unauthorized(
-                ex.getMessage(), request.getRequestURI());
+                properties.getSecurityUnauthorized(), request.getRequestURI());
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
@@ -56,10 +56,10 @@ public class SecurityExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
             org.springframework.security.core.AuthenticationException ex, HttpServletRequest request) {
 
-        log.warn("Authentication failed: {}", ex.getMessage());
+        log.warn("Authentication failed at {}: {}", request.getRequestURI(), ex.getMessage());
 
         ApiErrorResponse errorResponse = ApiErrorResponse.unauthorized(
-                ex.getMessage(), request.getRequestURI());
+                properties.getSecurityUnauthorized(), request.getRequestURI());
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
@@ -70,7 +70,7 @@ public class SecurityExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAccessDeniedException(
             org.springframework.security.access.AccessDeniedException ex, HttpServletRequest request) {
 
-        log.warn("Access denied: {}", ex.getMessage());
+        log.warn("Access denied at {}: {}", request.getRequestURI(), ex.getMessage());
 
         ApiErrorResponse errorResponse = ApiErrorResponse.forbidden(
                 properties.getAccessDenied(), request.getRequestURI());

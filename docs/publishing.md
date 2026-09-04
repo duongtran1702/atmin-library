@@ -1,188 +1,198 @@
-# 🚀 Hướng dẫn Đăng tải & Phát hành Thư viện lên Maven Central (Sonatype Central Portal)
+# Phát hành atmin-library 2.0.0
 
-Tài liệu này hướng dẫn chi tiết cách cấu hình ký số GPG, thiết lập tài khoản và quy trình phát hành thư viện `atmin-library` lên Maven Central. Quy trình đã được tự động hóa tối đa thông qua Gradle.
+Tài liệu dành cho chủ thư viện. Người dùng bình thường chỉ cần phần cài đặt trong [README](../README.md).
 
----
-
-## 📌 PHẦN 1: HƯỚNG DẪN CẤU HÌNH LẦN ĐẦU (Chỉ cần làm 1 lần duy nhất)
-
-Nếu bạn đổi máy tính mới hoặc thiết lập lại từ đầu, hãy thực hiện theo các bước sau:
-
-### Bước 1: Đăng ký tài khoản & Xác minh Namespace (Group ID)
-
-1. Truy cập vào trang [central.sonatype.com](https://central.sonatype.com/) và đăng ký tài khoản.
-2. Tại mục **Namespace**, thêm Namespace là `io.github.duongtran1702`.
-3. Xác minh quyền sở hữu: Tạo một kho lưu trữ trống (repository) trên tài khoản GitHub cá nhân của bạn theo yêu cầu của Sonatype để xác nhận bạn là chủ sở hữu tài khoản `duongtran1702`.
-4. Khi quá trình xác minh hoàn tất, trạng thái Namespace sẽ chuyển sang màu xanh lá (**Verified**).
-
-### Bước 2: Tạo và cấu hình khóa ký số GPG (GPG Signing Key)
-
-Maven Central bắt buộc tất cả các tệp tải lên phải được ký số điện tử GPG để xác thực nguồn gốc.
-
-1. **Tạo khóa mới**:
-   Mở terminal (ví dụ: Git Bash) và chạy lệnh:
-
-   ```bash
-   gpg --generate-key
-   ```
-
-   * Nhập Họ tên (`Real name`), Email của bạn.
-   * Tạo một mật khẩu khóa (`Passphrase`) mạnh và ghi nhớ mật khẩu này.
-2. **Lấy mã khóa (Key ID)**:
-   Xem danh sách các khóa trên máy bằng lệnh:
-
-   ```bash
-   gpg --list-keys
-   ```
-
-   Tìm khóa vừa tạo. Nó là một chuỗi ký tự hex dài (ví dụ: `YOUR_GPG_KEY_ID...`). Hãy sao chép **8 ký tự cuối cùng** của mã khóa (ví dụ: `YOUR_GPG_KEY_ID`).
-3. **Gửi khóa công khai lên server**:
-   Đưa khóa công khai của bạn lên máy chủ để Maven Central có thể đối chiếu chữ ký:
-
-   ```bash
-   gpg --keyserver keyserver.ubuntu.com --send-keys YOUR_GPG_KEY_ID
-   ```
-
-   *(Thay `YOUR_GPG_KEY_ID` bằng 8 ký tự khóa của bạn)*.
-4. **Xuất khóa bí mật (Secret Key Ring File)**:
-   Để Gradle có thể ký tự động khi build, bạn cần xuất file khóa bí mật sang định dạng kế thừa `.gpg`:
-
-   ```bash
-   gpg --keyring secring.gpg --export-secret-keys > C:/Users/<your_username>/.gnupg/secring.gpg
-   ```
-
-### Bước 3: Tạo User Token trên Sonatype
-
-1. Đăng nhập vào [Sonatype Central](https://central.sonatype.com/).
-2. Chọn ảnh đại diện ở góc phải -> Chọn **View Account** -> Click **Generate User Token**.
-3. Bạn sẽ nhận được 2 thông tin:
-   * **Username Token** (ví dụ: `YOUR_SONATYPE_USERNAME`)
-   * **Password Token** (ví dụ: `kIQJbNas...`)
-
-### Bước 4: Thiết lập file gradle.properties trên máy tính
-
-Để bảo mật thông tin tài khoản và khóa GPG, các thông tin này tuyệt đối không được đưa vào mã nguồn git. Thay vào đó, hãy lưu tại file `gradle.properties` toàn cục của máy tính bạn.
-
-📂 Đường dẫn file: `C:\Users\<your_username>\.gradle\gradle.properties`
-
-Nội dung file:
-
-```properties
-# 1. Cấu hình ký số khóa GPG
-signing.keyId=YOUR_GPG_KEY_ID
-signing.password=MẬT_KHẨU_KHÓA_GPG_CỦA_BẠN
-signing.secretKeyRingFile=C:/Users/<your_username>/.gnupg/secring.gpg
-
-# 2. Cấu hình tài khoản Token Sonatype Central
-username=YOUR_SONATYPE_USERNAME
-password=MẬT_KHẨU_TOKEN_SONATYPE_CỦA_BẠN
-```
-
----
-
-## 📌 PHẦN 2: QUY TRÌNH PHÁT HÀNH CÁC LẦN SAU (Cực kỳ đơn giản)
-
-Khi bạn đã hoàn thành cấu hình ở Phần 1, mỗi khi bạn cập nhật code và muốn phát hành phiên bản mới (ví dụ từ `1.0.2` lên `1.0.3.Beta`), hãy làm theo các bước sau:
-
-### Bước 1: Cập nhật phiên bản dự án
-
-Mở file [build.gradle](file:///d:/atmin-library/build.gradle) và thay đổi giá trị phiên bản mong muốn:
-
-```groovy
-version = '1.0.3.Beta'
-```
-
-### Bước 2: Chạy lệnh phát hành tự động
-
-Mở terminal tại thư mục gốc của dự án (`d:\atmin-library`) và chạy duy nhất lệnh dưới đây:
+## 1. Kiểm tra trước khi phát hành
 
 ```powershell
-.\gradlew deploy
+.\gradlew.bat clean check
 ```
 
-**Hệ thống sẽ tự động thực hiện**:
+Xác nhận:
 
-1. Biên dịch toàn bộ mã nguồn Java.
-2. Tạo tệp mã nguồn (`-sources.jar`) và tài liệu API (`-javadoc.jar`).
-3. Thực hiện ký số điện tử GPG lên tất cả các tệp bằng khóa bí mật của bạn.
-4. Đóng gói tất cả tệp tin và chữ ký vào một tệp ZIP bundle duy nhất tại `build/distributions/atmin-library-X.Y.Z-bundle.zip`.
-5. Tải trực tiếp tệp ZIP lên Sonatype Central API bằng Java HttpClient tích hợp sẵn.
+- version trong `build.gradle` là `2.0.0`;
+- test và Javadoc thành công;
+- README không còn version cũ;
+- Git working tree chỉ có thay đổi dự định phát hành;
+- namespace `io.github.duongtran1702` đã được xác minh trên Sonatype Central Portal.
 
-### Bước 3: Kiểm tra trạng thái đồng bộ
+Không tái sử dụng một version đã phát hành vì Maven Central không cho ghi đè artifact.
 
-Do lệnh chạy với cấu hình loại xuất bản là `USER_MANAGED` (trong API Upload link), Sonatype sẽ kiểm duyệt (validate) dự án của bạn (kiểm tra đầy đủ chữ ký GPG, định dạng file POM, thông tin bản quyền).
+## 2. Tạo token Maven Central
 
-* Nếu kiểm tra thành công, bạn cần truy cập giao diện điều khiển của Sonatype Central Portal để nhấn nút **Publish** thủ công nhằm phát hành thư viện ra công chúng.
-* Quá trình đồng bộ hóa toàn cầu mất khoảng **15 - 30 phút**.
-* Bạn có thể theo dõi tiến trình trực tuyến tại: 👉 [Sonatype Central Portal - Deployments](https://central.sonatype.com/)
+1. Đăng nhập [Sonatype Central Portal](https://central.sonatype.com/).
+2. Mở account và tạo user token.
+3. Lưu token username/password vào password manager.
 
----
+Không dùng mật khẩu tài khoản thông thường và không commit token.
 
-## 🛠️ CHI TIẾT CẤU HÌNH Gradle (Dành cho việc bảo trì)
+## 3. Tạo khóa GPG
 
-Trong [build.gradle](file:///d:/atmin-library/build.gradle), hai task chính được định nghĩa ở cuối file để nén gói và tải lên cổng thông tin:
+Tạo khóa nếu chưa có:
+
+```bash
+gpg --full-generate-key
+```
+
+Xem key ID:
+
+```bash
+gpg --list-secret-keys --keyid-format LONG
+```
+
+Đưa public key lên key server:
+
+```bash
+gpg --keyserver keyserver.ubuntu.com --send-keys YOUR_LONG_KEY_ID
+```
+
+Nếu dùng Gradle signing dạng secret key ring:
+
+```bash
+gpg --export-secret-keys YOUR_LONG_KEY_ID > secring.gpg
+```
+
+Giữ `secring.gpg` ngoài repository.
+
+## 4. Cấu hình local
+
+Tạo hoặc cập nhật file user-level:
+
+```text
+C:\Users\<username>\.gradle\gradle.properties
+```
+
+Nội dung:
+
+```properties
+signing.keyId=YOUR_GPG_KEY_ID
+signing.password=YOUR_GPG_PASSWORD
+signing.secretKeyRingFile=C:/Users/<username>/.gnupg/secring.gpg
+
+centralUsername=YOUR_CENTRAL_TOKEN_USERNAME
+centralPassword=YOUR_CENTRAL_TOKEN_PASSWORD
+```
+
+Task upload cũng nhận hai environment variable:
+
+```text
+MAVEN_CENTRAL_USERNAME
+MAVEN_CENTRAL_PASSWORD
+```
+
+Tên property cũ `username` và `password` vẫn được chấp nhận để không làm hỏng cấu hình 1.x, nhưng `centralUsername`/`centralPassword` rõ nghĩa và an toàn hơn.
+
+## 5. Test artifact ở local
+
+```powershell
+.\gradlew.bat publishToMavenLocal
+```
+
+Trong một project Spring Boot 4 khác:
 
 ```groovy
-// 1. Task đóng gói tất cả artifact cục bộ và chữ ký GPG thành file ZIP
-tasks.register('zipBundle', Zip) {
-    dependsOn 'cleanRepo', 'publishMavenJavaPublicationToLocalBundleRepository'
-    from layout.buildDirectory.dir("repo")
-    archiveFileName = "atmin-library-${version}-bundle.zip"
-    destinationDirectory = layout.buildDirectory.dir("distributions")
+repositories {
+    mavenLocal()
+    mavenCentral()
 }
 
-// 2. Task gọi REST API để đẩy thẳng file ZIP lên Sonatype Central Portal
-tasks.register('deploy') {
-    dependsOn 'zipBundle'
-    doLast {
-        def zipFile = layout.buildDirectory.file("distributions/atmin-library-${version}-bundle.zip").get().asFile
-        if (!zipFile.exists()) {
-            throw new GradleException("Zip bundle file not found: ${zipFile.absolutePath}")
-        }
-        
-        def username = project.properties["username"] ?: System.getenv("username")
-        def password = project.properties["password"] ?: System.getenv("password")
-        
-        if (!username || !password) {
-            throw new GradleException("Maven Central credentials (username/password) are not configured in gradle.properties.")
-        }
-        
-        def authString = "${username}:${password}"
-        def encodedAuth = java.util.Base64.getEncoder().encodeToString(authString.getBytes("UTF-8"))
-        
-        println "Uploading bundle to Sonatype Central Portal..."
-        
-        def boundary = "---------------------------" + System.currentTimeMillis()
-        def newline = "\r\n"
-        
-        def byteOutputStream = new java.io.ByteArrayOutputStream()
-        byteOutputStream.write(("--" + boundary + newline).getBytes("UTF-8"))
-        byteOutputStream.write(("Content-Disposition: form-data; name=\"bundle\"; filename=\"" + zipFile.name + "\"" + newline).getBytes("UTF-8"))
-        byteOutputStream.write(("Content-Type: application/zip" + newline + newline).getBytes("UTF-8"))
-        byteOutputStream.write(java.nio.file.Files.readAllBytes(zipFile.toPath()))
-        byteOutputStream.write(newline.getBytes("UTF-8"))
-        byteOutputStream.write(("--" + boundary + "--" + newline).getBytes("UTF-8"))
-        
-        def client = java.net.http.HttpClient.newHttpClient()
-        def uri = java.net.URI.create("https://central.sonatype.com/api/v1/publisher/upload?name=atmin-library-${version}&publishingType=USER_MANAGED")
-        
-        def request = java.net.http.HttpRequest.newBuilder()
-            .uri(uri)
-            .header("Authorization", "Bearer " + encodedAuth)
-            .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-            .POST(java.net.http.HttpRequest.BodyPublishers.ofByteArray(byteOutputStream.toByteArray()))
-            .build()
-            
-        def response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString())
-        
-        println "HTTP Status: " + response.statusCode()
-        println "Response: " + response.body()
-        
-        if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            println "Upload successful! Check status on https://central.sonatype.com/"
-        } else {
-            throw new GradleException("Failed to upload bundle: HTTP ${response.statusCode()} - ${response.body()}")
-        }
-    }
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'io.github.duongtran1702:atmin-library:2.0.0'
 }
 ```
+
+Kiểm tra ít nhất:
+
+- một success response;
+- một custom exception;
+- validation body;
+- Security filter nếu project dùng Security;
+- `Page` hoặc `Slice` nếu project dùng Spring Data.
+
+## 6. Tạo Central bundle
+
+```powershell
+.\gradlew.bat clean check zipBundle
+```
+
+Kết quả:
+
+```text
+build/distributions/atmin-library-2.0.0-bundle.zip
+```
+
+Bundle chứa:
+
+- main JAR;
+- sources JAR;
+- Javadoc JAR;
+- POM;
+- chữ ký ASCII-armored `.asc`;
+- checksum do Maven publishing tạo.
+
+`zipBundle` yêu cầu signing hợp lệ. Build thường và test không bắt buộc khóa ký.
+
+## 7. Upload
+
+### Cách A: task deploy
+
+```powershell
+.\gradlew.bat deploy
+```
+
+Task:
+
+1. tạo lại local repository;
+2. ký artifact;
+3. đóng ZIP;
+4. upload qua Central Portal Publisher API với `USER_MANAGED`.
+
+Sau khi upload:
+
+1. vào trang Deployments trên Central Portal;
+2. đợi validation;
+3. đọc và sửa mọi validation error nếu có;
+4. bấm Publish;
+5. đợi Maven Central đồng bộ.
+
+### Cách B: upload thủ công
+
+Có thể upload file ZIP ở bước 6 bằng giao diện Central Portal. Cách này hữu ích khi muốn kiểm tra bundle trước khi gửi.
+
+## 8. Sau khi phát hành
+
+Kiểm tra artifact:
+
+```text
+https://central.sonatype.com/artifact/io.github.duongtran1702/atmin-library/2.0.0
+```
+
+Sau đó:
+
+1. tạo Git tag `v2.0.0`;
+2. push tag;
+3. tạo GitHub Release từ changelog;
+4. chạy smoke test với dependency lấy từ Maven Central, không dùng `mavenLocal()`.
+
+## Lỗi thường gặp
+
+### Missing signing key
+
+Kiểm tra `signing.keyId`, `signing.password`, `signing.secretKeyRingFile` và quyền đọc file key.
+
+### Invalid signature
+
+Đảm bảo public key đã được gửi lên key server và key ID đúng với khóa dùng ký bundle.
+
+### Missing credentials
+
+Dùng `centralUsername`/`centralPassword` hoặc hai environment variable được tài liệu ở trên.
+
+### Namespace validation failed
+
+Kiểm tra group ID trong `build.gradle` là `io.github.duongtran1702` và namespace đó đã được verify trên đúng tài khoản Central Portal.
+
+### Version already exists
+
+Đổi sang version mới. Maven Central artifact đã phát hành là immutable.

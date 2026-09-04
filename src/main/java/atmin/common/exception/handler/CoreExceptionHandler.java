@@ -5,17 +5,31 @@ import atmin.common.response.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
+import org.springframework.web.ErrorResponseException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import atmin.common.config.AtminExceptionProperties;
+import org.springframework.validation.method.ParameterErrors;
+import org.springframework.validation.method.ParameterValidationResult;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -26,6 +40,8 @@ import java.util.Map;
  * <p>Handles:</p>
  * <ul>
  *   <li>400 - MethodArgumentNotValidException (validation errors)</li>
+ *   <li>400 - HandlerMethodValidationException</li>
+ *   <li>400 - malformed body and missing request values</li>
  *   <li>400 - MethodArgumentTypeMismatchException</li>
  *   <li>400 - IllegalArgumentException</li>
  *   <li>400 - BadRequestException</li>
@@ -35,7 +51,9 @@ import java.util.Map;
  *   <li>409 - DuplicateResourceException</li>
  *   <li>409 - ConflictException</li>
  *   <li>415 - HttpMediaTypeNotSupportedException</li>
+ *   <li>Spring MVC ErrorResponse exceptions with their original status</li>
  *   <li>500 - RuntimeException (catch-all)</li>
+ *   <li>500 - checked Exception (catch-all)</li>
  * </ul>
  */
 @Slf4j
@@ -55,9 +73,9 @@ public class CoreExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleValidationExceptions(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
 
-        Map<String, String> errorsMap = new HashMap<>();
+        Map<String, String> errorsMap = new LinkedHashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
-                errorsMap.put(error.getField(), error.getDefaultMessage())
+                errorsMap.putIfAbsent(error.getField(), error.getDefaultMessage())
         );
 
         ApiErrorResponse errorResponse = ApiErrorResponse.builder()
@@ -71,6 +89,67 @@ public class CoreExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Handles validation of controller method parameters introduced in modern
+     * Spring MVC versions.
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiErrorResponse> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex, HttpServletRequest request) {
+        Map<String, String> errorsMap = new LinkedHashMap<>();
+
+        for (ParameterValidationResult result : ex.getParameterValidationResults()) {
+            if (result instanceof ParameterErrors parameterErrors) {
+                parameterErrors.getFieldErrors().forEach(error ->
+                        errorsMap.putIfAbsent(error.getField(), error.getDefaultMessage()));
+                parameterErrors.getGlobalErrors().forEach(error ->
+                        errorsMap.putIfAbsent(parameterErrors.getObjectName(), error.getDefaultMessage()));
+                continue;
+            }
+
+            String parameterName = result.getMethodParameter().getParameterName();
+            if (parameterName == null) {
+                parameterName = "arg" + result.getMethodParameter().getParameterIndex();
+            }
+            String finalParameterName = parameterName;
+            result.getResolvableErrors().forEach(error ->
+                    errorsMap.putIfAbsent(finalParameterName, error.getDefaultMessage()));
+        }
+
+        ex.getCrossParameterValidationResults().forEach(error ->
+                errorsMap.putIfAbsent("_global", error.getDefaultMessage()));
+
+        ApiErrorResponse response = ApiErrorResponse.validationError(
+                request.getRequestURI(), properties.getValidationFailed(), errorsMap);
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    /**
+     * Handles malformed JSON and other unreadable request bodies without
+     * exposing parser implementation details to API clients.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadableException(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.warn("Unreadable request body at {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.badRequest().body(ApiErrorResponse.badRequest(
+                properties.getMalformedRequest(), request.getRequestURI()));
+    }
+
+    /**
+     * Handles missing request parameters and multipart request parts.
+     */
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleMissingRequestValue(
+            Exception ex, HttpServletRequest request) {
+        log.warn("Missing request value at {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.badRequest().body(ApiErrorResponse.badRequest(
+                properties.getMissingRequestValue(), request.getRequestURI()));
     }
 
     /**
@@ -202,6 +281,56 @@ public class CoreExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
     }
 
+    /**
+     * Preserves status codes produced by Spring MVC instead of turning them into
+     * a generic 500 response.
+     */
+    @ExceptionHandler({
+            HttpRequestMethodNotSupportedException.class,
+            HttpMediaTypeNotAcceptableException.class,
+            NoHandlerFoundException.class,
+            NoResourceFoundException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleSpringWebError(
+            Exception ex, HttpServletRequest request) {
+        ErrorResponse springError = (ErrorResponse) ex;
+        HttpStatusCode status = springError.getStatusCode();
+        String message = springError.getBody().getDetail();
+        if (message == null || message.isBlank()) {
+            message = ex.getMessage();
+        }
+        return ResponseEntity.status(status)
+                .body(ApiErrorResponse.of(status, message, request.getRequestURI()));
+    }
+
+    /**
+     * Preserves explicit statuses thrown with ResponseStatusException.
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleResponseStatusException(
+            ResponseStatusException ex, HttpServletRequest request) {
+        String message = ex.getReason();
+        if (message == null || message.isBlank()) {
+            message = ex.getBody().getDetail();
+        }
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(ApiErrorResponse.of(ex.getStatusCode(), message, request.getRequestURI()));
+    }
+
+    /**
+     * Handles custom Spring ErrorResponseException subclasses.
+     */
+    @ExceptionHandler(ErrorResponseException.class)
+    public ResponseEntity<ApiErrorResponse> handleErrorResponseException(
+            ErrorResponseException ex, HttpServletRequest request) {
+        String message = ex.getBody().getDetail();
+        if (message == null || message.isBlank()) {
+            message = ex.getMessage();
+        }
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(ApiErrorResponse.of(ex.getStatusCode(), message, request.getRequestURI()));
+    }
+
     // ======================== 503 Service Unavailable ========================
 
     /**
@@ -238,5 +367,21 @@ public class CoreExceptionHandler {
                 errorResponse.getTraceId(), request.getRequestURI(), ex);
 
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Catch-all for checked exceptions thrown by controller methods.
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleException(
+            Exception ex, HttpServletRequest request) {
+        ApiErrorResponse errorResponse = ApiErrorResponse.of(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                properties.getUnexpectedError(),
+                request.getRequestURI()
+        );
+        log.error("TraceId={} | An unexpected checked exception occurred at URI: {}",
+                errorResponse.getTraceId(), request.getRequestURI(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 }

@@ -48,9 +48,9 @@ import java.lang.annotation.Target;
 public @interface EnableAtminExceptionHandling {
 
     /**
-     * Whether to enable security-related exception handlers
+     * Whether to enable available security-related exception handlers
      * (JWT, AuthenticationException, AccessDeniedException).
-     * <p>Requires Spring Security and jjwt on the classpath.</p>
+     * <p>Spring Security and JJWT are detected independently in version 2.0.</p>
      *
      * @return true to enable security handlers, false otherwise
      */

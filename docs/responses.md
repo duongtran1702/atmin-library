@@ -55,6 +55,9 @@ ApiResponse.success(HttpStatus.ACCEPTED, "Đang xử lý", requestId)
 // 201 Created — tạo mới
 ApiResponse.created("Tạo user thành công", savedUser)
 
+// 202 Accepted — xử lý bất đồng bộ
+ApiResponse.accepted("Yêu cầu đang được xử lý", jobId)
+
 // 204 No Content
 ApiResponse.noContent("Đã xóa")
 ```
@@ -65,6 +68,9 @@ ApiResponse.noContent("Đã xóa")
 // 1. Phân trang dạng Page (Spring Data Page — Có truy vấn COUNT)
 Page<User> page = userRepository.findAll(pageable);
 ApiResponse.paginated("Danh sách users", page.getContent(), PageInfo.from(page))
+
+// Factory rút gọn mới trong 2.0
+ApiResponse.pagePaginated("Danh sách users", page)
 
 // 2. Phân trang dạng Slice (Spring Data Slice — Không COUNT, tối ưu cho bảng lớn)
 Slice<User> slice = userRepository.findAllSlice(pageable);
@@ -242,6 +248,9 @@ Map<String, String> fieldErrors = Map.of(
     "name", "Name must be at least 2 characters"
 );
 ApiErrorResponse.validationError("/api/users", fieldErrors)
+
+// Tùy chỉnh validation summary trong 2.0
+ApiErrorResponse.validationError("/api/users", "Dữ liệu không hợp lệ", fieldErrors)
 ```
 
 ### JSON Response mẫu
@@ -280,6 +289,10 @@ Khóa MDC mặc định dùng để trích xuất `traceId` là `"traceId"`. N�
 
 ```java
 // Cấu hình một lần duy nhất tại hàm main hoặc class Config khởi tạo
+// Khuyên dùng trong atmin-library 2.0:
+// atmin.exceptions.trace-id-mdc-key=correlationId
+
+// API 1.x này vẫn được hỗ trợ:
 ApiErrorResponse.setMdcKey("correlationId");
 ```
 
@@ -330,4 +343,10 @@ PageInfo pageInfo = PageInfo.builder()
         .pageSize(20)
         .hasNext(true)
         .build();
+
+// 5. Tạo Slice metadata thủ công, không cần Spring Data
+PageInfo sliceInfo = PageInfo.slice(0, 20, true);
 ```
+
+> Từ 2.0, `PageInfo.of` và `PageInfo.slice` kiểm tra dữ liệu đầu vào:
+> `pageNumber >= 0`, `pageSize > 0`, `totalElements >= 0`.
