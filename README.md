@@ -5,12 +5,12 @@
 [![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://central.sonatype.com/artifact/io.github.duongtran1702/atmin-library)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-`atmin-library` là thư viện dùng chung cho REST API chạy trên Spring Boot 4, dùng được cho cả monolithic Spring MVC và microservice Spring WebFlux/Gateway. Thư viện chuẩn hóa response, phân trang, exception, security error và trace ID trong cùng một JSON contract.
+`atmin-library` là thư viện dùng chung cho REST API chạy trên Spring Boot 4. File này là hướng dẫn độc lập, đầy đủ cho Spring MVC và các API dùng chung: cài đặt, response, phân trang, exception, security, trace ID, cấu hình, kiểm thử và phát hành.
 
-Tài liệu được chia theo nhu cầu:
+Chọn đúng một tài liệu theo web stack; không cần đọc cả hai:
 
-- **Monolithic/MVC và API dùng chung:** tiếp tục đọc file này.
-- **Microservice/WebFlux/Gateway:** xem [README-MICROSERVICES.md](README-MICROSERVICES.md).
+- **Spring MVC/Servlet:** chỉ cần file này.
+- **Spring WebFlux/Gateway:** có thể dùng độc lập [README-MICROSERVICES.md](README-MICROSERVICES.md).
 
 Phiên bản 2.1 giữ nguyên cách dùng và JSON contract của dòng 1.x/2.0. Các API cũ như `ApiResponse.success(...)`, `created(...)`, `paginated(...)`, `slicePaginated(...)`, `PageInfo.from(...)`, các custom exception và `@EnableAtminExceptionHandling` vẫn hoạt động. Những khả năng mới được bổ sung theo hướng cộng thêm.
 
@@ -132,7 +132,7 @@ dependencies {
 }
 ```
 
-Xem cấu hình reactive đầy đủ trong [README-MICROSERVICES.md](README-MICROSERVICES.md).
+Đoạn WebFlux trên chỉ giúp nhận diện dependency khi so sánh web stack; người dùng reactive có hướng dẫn độc lập riêng, không cần kết hợp nội dung với file này.
 
 Sau khi thêm dependency, không cần thêm annotation:
 

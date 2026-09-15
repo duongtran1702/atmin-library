@@ -1,12 +1,15 @@
 # atmin-library 2.1 cho Microservice, WebFlux và Gateway
 
-Tài liệu này dành cho ứng dụng reactive, microservice và API Gateway. Nếu dự án là monolithic Spring MVC, xem [README chính](README.md).
+Đây là hướng dẫn độc lập, đầy đủ cho ứng dụng reactive, microservice và API Gateway. Người dùng WebFlux/Gateway chỉ cần file này để cài đặt, trả response, xử lý exception, cấu hình security, downstream client, trace ID và Gateway; không cần đọc `README.md`.
+
+Nếu ứng dụng chạy Spring MVC/Servlet thay vì reactive, `README.md` là một hướng dẫn độc lập khác dành cho stack đó.
 
 `atmin-library:2.1.0` dùng chung một contract cho cả MVC và WebFlux nhưng tách implementation theo web application type. Consumer vẫn dùng đúng artifact cũ; không có artifact giả định như `atmin-library-webflux`.
 
 ## Mục lục
 
 - [Khả năng](#khả-năng)
+- [Yêu cầu môi trường](#yêu-cầu-môi-trường)
 - [Cài đặt WebFlux](#cài-đặt-webflux)
 - [Cách auto-configuration lựa chọn adapter](#cách-auto-configuration-lựa-chọn-adapter)
 - [Response reactive](#response-reactive)
@@ -36,6 +39,19 @@ Tài liệu này dành cho ứng dụng reactive, microservice và API Gateway. 
 | Thay handler mặc định | Bean cùng type | Tắt Atmin Gateway handler trước |
 
 Không có `block()` hoặc `subscribe()` trong production handler của thư viện.
+
+## Yêu cầu môi trường
+
+| Thành phần | Yêu cầu |
+|---|---|
+| Java | 21 trở lên |
+| Spring Boot | 4.x; artifact được build với BOM 4.1.1 |
+| Web stack | `spring-boot-starter-webflux` |
+| JSON | Jackson 3 do Spring Boot quản lý |
+| Gateway | Tùy chọn; application tự cung cấp Spring Cloud Gateway |
+| Security | Tùy chọn; application tự cung cấp Spring Security |
+
+Thư viện sử dụng Spring Framework 7 và package `jakarta.*`; không dùng bản 2.1 với Spring Boot 2.x hoặc 3.x. WebFlux, Security, Gateway, validation và data integration chỉ kích hoạt khi dependency tương ứng có trên classpath.
 
 ## Cài đặt WebFlux
 
@@ -75,6 +91,8 @@ dependencies {
 
 Thư viện không tự quyết định Netty, Tomcat hoặc Jetty và không tự thêm Spring Cloud Gateway, R2DBC, Kafka hay RabbitMQ.
 
+Sau khi thêm dependency, không cần annotation kích hoạt. Spring Boot tự nạp auto-configuration của thư viện.
+
 ## Cách auto-configuration lựa chọn adapter
 
 Hai auto-configuration được đăng ký độc lập:
@@ -99,6 +117,15 @@ public class OrderServiceApplication {
 
 ## Response reactive
 
+Các type thường dùng:
+
+```java
+import atmin.common.response.ApiResponse;
+import atmin.common.response.ApiErrorResponse;
+import atmin.common.response.PageInfo;
+import atmin.common.exception.ResourceNotFoundException;
+```
+
 Các factory method cũ dùng trực tiếp bên trong `Mono` hoặc `Flux`:
 
 ```java
@@ -117,6 +144,34 @@ class OrderController {
 ```
 
 Không cần tạo một loại response khác cho reactive. `ApiResponse`, `ApiErrorResponse` và `PageInfo` vẫn giữ nguyên package và JSON field.
+
+Response thành công điển hình:
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "message": "Order found",
+  "data": {
+    "id": "2a558782-3622-4f78-8b9d-c328f041f5de"
+  }
+}
+```
+
+Khi controller ném exception đã hỗ trợ, thư viện tự tạo `ApiErrorResponse`; application không cần tự viết error body:
+
+```json
+{
+  "timestamp": "2026-09-15T14:30:00",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Order not found",
+  "path": "/api/orders/2a558782-3622-4f78-8b9d-c328f041f5de",
+  "traceId": "request-trace-42",
+  "code": "RESOURCE_NOT_FOUND",
+  "retryable": false
+}
+```
 
 `ApiResponse` không tự biến `Flux<T>` thành JSON streaming. Nếu endpoint cần NDJSON hoặc Server-Sent Events, application phải khai báo media type và contract streaming riêng. Ví dụ phân trang dưới đây chủ động gom đúng một page vào `List<T>`; kích thước page và giới hạn bộ nhớ vẫn do application kiểm soát.
 
