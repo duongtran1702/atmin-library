@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'io.github.duongtran1702'
-version = '2.0.0'
+version = '2.1.0'
 description = 'atmin-library - Reusable Spring Boot common library by Atmin'
 
 java {
@@ -31,6 +31,8 @@ dependencies {
     // Spring Boot 4 uses focused starters. Dependencies remain compile-only so
     // consumers stay in control of their web, security and data stack.
     compileOnly 'org.springframework.boot:spring-boot-starter-webmvc'
+    compileOnly 'org.springframework:spring-webflux'
+    compileOnly 'org.springframework.boot:spring-boot-webflux'
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
     compileOnly 'org.springframework.boot:spring-boot-starter-validation'
 
@@ -56,6 +58,8 @@ dependencies {
 
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework:spring-webflux'
+    testImplementation 'org.springframework.boot:spring-boot-webflux'
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'io.jsonwebtoken:jjwt-api:0.13.0'
@@ -71,6 +75,9 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.withType(Javadoc).configureEach {
     options.encoding = 'UTF-8'
+    // Keep structural/link doclint checks enabled while allowing concise API
+    // comments on legacy convenience factories.
+    options.addStringOption('Xdoclint:all,-missing', '-quiet')
     failOnError = true
 }
 
@@ -187,12 +194,12 @@ tasks.register('deploy') {
 }
 
 signing {
-    required {
+    required = {
         gradle.taskGraph.allTasks.any {
             it.name == 'zipBundle' || it.name == 'deploy' || it.name.startsWith('publishMavenJavaPublicationToMavenCentral')
         }
     }
-    sign publishing.publications.mavenJava
+    sign(publishing.publications.mavenJava)
 }
 
 tasks.named('test') {

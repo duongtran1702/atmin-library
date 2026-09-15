@@ -2,10 +2,12 @@ package atmin.common.config;
 
 import atmin.common.exception.handler.CoreExceptionHandler;
 import atmin.common.exception.handler.JwtExceptionHandler;
+import atmin.common.exception.handler.MicroserviceExceptionHandler;
 import atmin.common.exception.handler.SecurityExceptionHandler;
 import atmin.common.exception.handler.SpringSecurityExceptionHandler;
 import atmin.common.exception.handler.StorageExceptionHandler;
 import atmin.common.exception.handler.ValidationExceptionHandler;
+import atmin.common.exception.handler.WebClientExceptionHandler;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -33,9 +35,39 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 public class AtminExceptionAutoConfiguration {
 
     @Bean
+    @ConditionalOnMissingBean(AtminServletTraceFilter.class)
+    AtminServletTraceFilter atminServletTraceFilter(AtminExceptionProperties properties) {
+        return new AtminServletTraceFilter(properties);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(CoreExceptionHandler.class)
     CoreExceptionHandlerAdvice coreExceptionHandler(AtminExceptionProperties properties) {
         return new CoreExceptionHandlerAdvice(properties);
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "org.springframework.web.client.RestClientException")
+    @ConditionalOnProperty(prefix = "atmin.exceptions", name = "microservice-enabled", matchIfMissing = true)
+    static class MicroserviceHandlerConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(MicroserviceExceptionHandler.class)
+        MicroserviceExceptionHandlerAdvice microserviceExceptionHandler(AtminExceptionProperties properties) {
+            return new MicroserviceExceptionHandlerAdvice(properties);
+        }
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "org.springframework.web.reactive.function.client.WebClientException")
+    @ConditionalOnProperty(prefix = "atmin.exceptions", name = "microservice-enabled", matchIfMissing = true)
+    static class WebClientHandlerConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(WebClientExceptionHandler.class)
+        WebClientExceptionHandlerAdvice webClientExceptionHandler(AtminExceptionProperties properties) {
+            return new WebClientExceptionHandlerAdvice(properties);
+        }
     }
 
     /** Uses the original combined handler when both Security and JJWT exist. */

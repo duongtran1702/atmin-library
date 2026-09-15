@@ -13,8 +13,12 @@ Tất cả exception đều extends `RuntimeException` và có annotation `@Resp
 | `ResourceNotFoundException` | 404 Not Found | Tài nguyên không tồn tại |
 | `DuplicateResourceException` | 409 Conflict | Dữ liệu đã tồn tại (trùng lặp) |
 | `ConflictException` | 409 Conflict | Xung đột dữ liệu |
+| `RateLimitExceededException` | 429 Too Many Requests | Vượt giới hạn request, hỗ trợ `Retry-After` |
+| `DownstreamServiceException` | 502 Bad Gateway | Downstream trả response lỗi |
+| `CircuitBreakerOpenException` | 503 Service Unavailable | Circuit breaker đang mở |
 | `CloudStorageException` | 503 Service Unavailable | Lỗi cloud storage (S3, GCS...) |
 | `ServiceUnavailableException` | 503 Service Unavailable | Service bên ngoài không khả dụng |
+| `GatewayTimeoutException` | 504 Gateway Timeout | Downstream phản hồi quá deadline |
 
 ## Import
 
@@ -296,6 +300,58 @@ throw new CloudStorageException("Failed to delete file: " + filename);
     "traceId": "fa7a4e6b-a25f-4ce9-8973-2e06cbe19e7a"
 }
 ```
+
+---
+
+## Exception dành cho microservice
+
+### RateLimitExceededException (429)
+
+```java
+throw new RateLimitExceededException("Vượt quá số request cho phép", 60);
+```
+
+Constructor có số giây sẽ tạo header `Retry-After: 60`. Nếu không muốn gửi header:
+
+```java
+throw new RateLimitExceededException("Bạn thao tác quá nhanh");
+```
+
+### DownstreamServiceException (502)
+
+Dùng khi service phụ thuộc trả response lỗi hoặc response không thể sử dụng:
+
+```java
+throw new DownstreamServiceException("payment-service", 500, originalException);
+```
+
+Có thể dùng constructor message cũ quen thuộc:
+
+```java
+throw new DownstreamServiceException("Không thể hoàn tất thanh toán", originalException);
+```
+
+### CircuitBreakerOpenException (503)
+
+```java
+throw CircuitBreakerOpenException.forService("inventory-service", cause);
+```
+
+Class này không phụ thuộc Resilience4j, Spring Retry hoặc circuit-breaker vendor cụ thể.
+
+### GatewayTimeoutException (504)
+
+```java
+throw GatewayTimeoutException.forService("shipping-service", timeoutException);
+```
+
+Hoặc tự đặt public message:
+
+```java
+throw new GatewayTimeoutException("Không nhận được phản hồi từ dịch vụ vận chuyển");
+```
+
+Các lỗi `RestClientResponseException`, `ResourceAccessException`, `WebClientResponseException` và `WebClientRequestException` phù hợp được handler tự động chuyển sang 502/503/504. `UnknownHostException`, `ConnectException`, `NoRouteToHostException`, `SocketTimeoutException` và `HttpTimeoutException` cũng được xử lý nếu thoát ra trực tiếp. Với Feign hoặc client khác, bọc exception gốc bằng một trong các exception phía trên.
 
 ---
 

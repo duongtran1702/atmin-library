@@ -37,6 +37,15 @@ class ApiErrorResponseTest {
     }
 
     @Test
+    void rejectsUnsafeMdcTraceId() {
+        MDC.put("traceId", "trace with spaces");
+
+        String traceId = ApiErrorResponse.resolveTraceId();
+
+        assertThat(UUID.fromString(traceId)).isNotNull();
+    }
+
+    @Test
     void supportsConfiguredValidationMessageWithoutBreakingOldFactory() {
         ApiErrorResponse configured = ApiErrorResponse.validationError(
                 "/items", "Invalid request", Map.of("name", "required"));
@@ -55,5 +64,19 @@ class ApiErrorResponseTest {
 
         assertThat(response.getStatus()).isEqualTo(422);
         assertThat(response.getError()).isEqualTo("Unprocessable Content");
+        assertThat(response.getCode()).isNull();
+        assertThat(response.getRetryable()).isNull();
+        assertThat(response.getService()).isNull();
+    }
+
+    @Test
+    void supportsOptionalMachineReadableClassification() {
+        ApiErrorResponse response = ApiErrorResponse.of(
+                HttpStatus.SERVICE_UNAVAILABLE, "Temporarily unavailable", "/orders",
+                "trace-123", AtminErrorCode.DOWNSTREAM_UNAVAILABLE, true, "inventory");
+
+        assertThat(response.getCode()).isEqualTo(AtminErrorCode.DOWNSTREAM_UNAVAILABLE);
+        assertThat(response.getRetryable()).isTrue();
+        assertThat(response.getService()).isEqualTo("inventory");
     }
 }

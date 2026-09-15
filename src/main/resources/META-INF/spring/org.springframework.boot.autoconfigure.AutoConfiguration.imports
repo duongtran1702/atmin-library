@@ -1,1 +1,2 @@
 atmin.common.config.AtminExceptionAutoConfiguration
+atmin.common.config.AtminReactiveExceptionAutoConfiguration

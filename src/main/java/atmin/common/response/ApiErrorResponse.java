@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatusCode;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Standard error response format for REST APIs.
@@ -51,6 +52,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ApiErrorResponse {
 
+    private static final Pattern SAFE_TRACE_ID = Pattern.compile("[A-Za-z0-9._:-]{1,128}");
+
     /**
      * The MDC key used to resolve trace IDs.
      * Default is "traceId". Can be changed via {@link #setMdcKey(String)}.
@@ -79,6 +82,41 @@ public class ApiErrorResponse {
      */
     private String traceId;
 
+    /** Optional stable code for clients that must not parse display messages. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private AtminErrorCode code;
+
+    /** Optional retry hint for transient failures. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean retryable;
+
+    /** Optional logical service label; internal hostnames are never inferred. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String service;
+
+    /**
+     * Preserves the all-arguments constructor signature available before the
+     * optional 2.1 classification fields were introduced.
+     *
+     * @param timestamp time at which the response was created
+     * @param status numeric HTTP status
+     * @param error HTTP reason phrase
+     * @param message safe public message
+     * @param path request path
+     * @param errors optional validation errors
+     * @param traceId request trace identifier
+     */
+    public ApiErrorResponse(
+            LocalDateTime timestamp,
+            int status,
+            String error,
+            String message,
+            String path,
+            Map<String, String> errors,
+            String traceId) {
+        this(timestamp, status, error, message, path, errors, traceId, null, null, null);
+    }
+
     // ======================== Trace ID Resolution ========================
 
     /**
@@ -94,7 +132,7 @@ public class ApiErrorResponse {
      */
     public static String resolveTraceId() {
         String traceId = MDC.get(mdcKey);
-        if (traceId != null && !traceId.isBlank()) {
+        if (traceId != null && SAFE_TRACE_ID.matcher(traceId).matches()) {
             return traceId;
         }
         return UUID.randomUUID().toString();
@@ -152,6 +190,45 @@ public class ApiErrorResponse {
      * @return ApiErrorResponse instance with auto-populated traceId
      */
     public static ApiErrorResponse of(HttpStatusCode httpStatus, String message, String path) {
+        return of(httpStatus, message, path, resolveTraceId());
+    }
+
+    /**
+     * Create an error response with an explicitly resolved trace ID.
+     * This overload is intended for reactive applications where MDC is not a
+     * reliable source after thread switches.
+     *
+     * @param httpStatus the HTTP status code
+     * @param message the safe public error message
+     * @param path the request URI path
+     * @param traceId the trace ID resolved from the current request context
+     * @return a populated error response
+     */
+    public static ApiErrorResponse of(
+            HttpStatusCode httpStatus, String message, String path, String traceId) {
+        return of(httpStatus, message, path, traceId, null, null, null);
+    }
+
+    /**
+     * Create an optionally classified error response for new integrations.
+     *
+     * @param httpStatus HTTP status code
+     * @param message safe public message
+     * @param path request path
+     * @param traceId request trace identifier
+     * @param code optional stable machine-readable code
+     * @param retryable optional retry hint
+     * @param service optional logical service name
+     * @return a populated error response
+     */
+    public static ApiErrorResponse of(
+            HttpStatusCode httpStatus,
+            String message,
+            String path,
+            String traceId,
+            AtminErrorCode code,
+            Boolean retryable,
+            String service) {
         HttpStatus knownStatus = HttpStatus.resolve(httpStatus.value());
         return ApiErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
@@ -159,12 +236,40 @@ public class ApiErrorResponse {
                 .error(knownStatus != null ? knownStatus.getReasonPhrase() : "HTTP " + httpStatus.value())
                 .message(message)
                 .path(path)
-                .traceId(resolveTraceId())
+                .traceId(traceId)
+                .code(code)
+                .retryable(retryable)
+                .service(service)
+                .build();
+    }
+
+    /**
+     * Create a validation response with an explicit trace ID.
+     *
+     * @param path request path
+     * @param message safe validation summary
+     * @param errors field-level validation messages
+     * @param traceId request trace identifier
+     * @return a populated validation error response
+     */
+    public static ApiErrorResponse validationError(
+            String path, String message, Map<String, String> errors, String traceId) {
+        return ApiErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message(message)
+                .path(path)
+                .errors(errors)
+                .traceId(traceId)
                 .build();
     }
 
     /**
      * Create a 400 Bad Request error response.
+     * @param message safe public message
+     * @param path request path
+     * @return a populated error response
      */
     public static ApiErrorResponse badRequest(String message, String path) {
         return of(HttpStatus.BAD_REQUEST, message, path);
@@ -172,6 +277,9 @@ public class ApiErrorResponse {
 
     /**
      * Create a 401 Unauthorized error response.
+     * @param message safe public message
+     * @param path request path
+     * @return a populated error response
      */
     public static ApiErrorResponse unauthorized(String message, String path) {
         return of(HttpStatus.UNAUTHORIZED, message, path);
@@ -179,6 +287,9 @@ public class ApiErrorResponse {
 
     /**
      * Create a 403 Forbidden error response.
+     * @param message safe public message
+     * @param path request path
+     * @return a populated error response
      */
     public static ApiErrorResponse forbidden(String message, String path) {
         return of(HttpStatus.FORBIDDEN, message, path);
@@ -186,6 +297,9 @@ public class ApiErrorResponse {
 
     /**
      * Create a 404 Not Found error response.
+     * @param message safe public message
+     * @param path request path
+     * @return a populated error response
      */
     public static ApiErrorResponse notFound(String message, String path) {
         return of(HttpStatus.NOT_FOUND, message, path);
@@ -193,6 +307,9 @@ public class ApiErrorResponse {
 
     /**
      * Create a 409 Conflict error response.
+     * @param message safe public message
+     * @param path request path
+     * @return a populated error response
      */
     public static ApiErrorResponse conflict(String message, String path) {
         return of(HttpStatus.CONFLICT, message, path);
@@ -200,6 +317,9 @@ public class ApiErrorResponse {
 
     /**
      * Create a 500 Internal Server Error response.
+     * @param message safe public message
+     * @param path request path
+     * @return a populated error response
      */
     public static ApiErrorResponse internalServerError(String message, String path) {
         return of(HttpStatus.INTERNAL_SERVER_ERROR, message, path);
@@ -207,6 +327,9 @@ public class ApiErrorResponse {
 
     /**
      * Create a 503 Service Unavailable error response.
+     * @param message safe public message
+     * @param path request path
+     * @return a populated error response
      */
     public static ApiErrorResponse serviceUnavailable(String message, String path) {
         return of(HttpStatus.SERVICE_UNAVAILABLE, message, path);

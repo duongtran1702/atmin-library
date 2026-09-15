@@ -1,18 +1,24 @@
-# atmin-library 2.0
+# atmin-library 2.1
 
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F.svg)](https://spring.io/projects/spring-boot)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://central.sonatype.com/artifact/io.github.duongtran1702/atmin-library)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://central.sonatype.com/artifact/io.github.duongtran1702/atmin-library)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-`atmin-library` là thư viện dùng chung cho REST API chạy trên Spring Boot 4. Thư viện chuẩn hóa response thành công, metadata phân trang và response lỗi; đồng thời tự động đăng ký các exception handler cho Spring MVC, Bean Validation, Spring Security, JJWT và upload/storage.
+`atmin-library` là thư viện dùng chung cho REST API chạy trên Spring Boot 4, dùng được cho cả monolithic Spring MVC và microservice Spring WebFlux/Gateway. Thư viện chuẩn hóa response, phân trang, exception, security error và trace ID trong cùng một JSON contract.
 
-Phiên bản 2.0 giữ nguyên cách dùng và JSON contract của dòng 1.x. Các API cũ như `ApiResponse.success(...)`, `created(...)`, `paginated(...)`, `slicePaginated(...)`, `PageInfo.from(...)`, các custom exception và `@EnableAtminExceptionHandling` vẫn hoạt động. Những khả năng mới được bổ sung theo hướng cộng thêm.
+Tài liệu được chia theo nhu cầu:
+
+- **Monolithic/MVC và API dùng chung:** tiếp tục đọc file này.
+- **Microservice/WebFlux/Gateway:** xem [README-MICROSERVICES.md](README-MICROSERVICES.md).
+
+Phiên bản 2.1 giữ nguyên cách dùng và JSON contract của dòng 1.x/2.0. Các API cũ như `ApiResponse.success(...)`, `created(...)`, `paginated(...)`, `slicePaginated(...)`, `PageInfo.from(...)`, các custom exception và `@EnableAtminExceptionHandling` vẫn hoạt động. Những khả năng mới được bổ sung theo hướng cộng thêm.
 
 ## Mục lục
 
 - [Điểm nổi bật](#điểm-nổi-bật)
 - [Yêu cầu môi trường](#yêu-cầu-môi-trường)
+- [Bảng khả năng MVC và WebFlux](#bảng-khả-năng-mvc-và-webflux)
 - [Cài đặt nhanh](#cài-đặt-nhanh)
 - [ApiResponse](#apiresponse)
 - [PageInfo](#pageinfo)
@@ -20,6 +26,7 @@ Phiên bản 2.0 giữ nguyên cách dùng và JSON contract của dòng 1.x. C�
 - [Custom exception](#custom-exception)
 - [Exception handler tự động](#exception-handler-tự-động)
 - [Cấu hình](#cấu-hình)
+- [Lỗi thường gặp trong microservice](#lỗi-thường-gặp-trong-microservice)
 - [Spring Security và JWT](#spring-security-và-jwt)
 - [Trace ID](#trace-id)
 - [Tùy biến và ghi đè](#tùy-biến-và-ghi-đè)
@@ -39,6 +46,8 @@ Phiên bản 2.0 giữ nguyên cách dùng và JSON contract của dòng 1.x. C�
 - Không trả chi tiết lỗi nội bộ cho client khi xảy ra lỗi 500.
 - Giữ đúng status của `ResponseStatusException` và các lỗi Spring MVC thay vì đổi thành 500.
 - Xử lý JSON sai định dạng, thiếu parameter/part, validation body và validation method.
+- Chuẩn hóa lỗi gọi service khác từ `RestClient`, `RestTemplate` và tùy chọn `WebClient`.
+- Có exception riêng cho 429, 502, 503 và 504; hỗ trợ header `Retry-After`.
 - Spring Security có thể hoạt động độc lập, không còn bắt buộc phải cài JJWT.
 - JJWT có thể hoạt động độc lập nếu ứng dụng không dùng Spring Security.
 - Từng module Security, Security Filter và Storage có thể bật/tắt riêng.
@@ -52,11 +61,28 @@ Phiên bản 2.0 giữ nguyên cách dùng và JSON contract của dòng 1.x. C�
 |---|---|
 | Java | 21 trở lên |
 | Spring Boot | 4.x; bản build hiện tại dùng BOM 4.1.1 |
-| Spring MVC | `spring-boot-starter-webmvc` |
+| Web stack | `spring-boot-starter-webmvc` hoặc `spring-boot-starter-webflux` |
 | Gradle khi phát triển thư viện | Dùng wrapper đi kèm, hiện là 9.5.1 |
-| Servlet | Chỉ hỗ trợ servlet stack; chưa hỗ trợ WebFlux |
+| Runtime | Servlet MVC, Reactive WebFlux và Gateway tùy chọn |
 
-Thư viện dùng package `jakarta.*`, Spring Framework 7 và Jackson 3 theo Spring Boot 4. Không dùng bản 2.0 này cho Spring Boot 2.x hoặc 3.x.
+Thư viện dùng package `jakarta.*`, Spring Framework 7 và Jackson 3 theo Spring Boot 4. Không dùng bản 2.1 này cho Spring Boot 2.x hoặc 3.x.
+
+## Bảng khả năng MVC và WebFlux
+
+| Tính năng | Monolithic/MVC | Microservice/WebFlux |
+|---|:---:|:---:|
+| `ApiResponse`, `ApiErrorResponse`, `PageInfo` | Có | Có |
+| Custom exception 400–504 | Có | Có |
+| Validation body/method | Có | Có |
+| Security 401/403 JSON | Servlet Security | Reactive Security |
+| RestClient/RestTemplate downstream | Có | Không áp dụng |
+| WebClient downstream | Có, dependency tùy chọn | Có |
+| Trace propagation | MDC | Reactor Context + request header |
+| `X-Trace-Id` response header | Qua tracing của ứng dụng | Tự động |
+| Gateway filter-chain error | Không áp dụng | Có, khi Gateway hiện diện |
+| Upload/storage handler | Servlet multipart | Custom storage exception; streaming thuộc ứng dụng |
+
+Spring Boot tự chọn đúng auto-configuration theo web application type, nên hai handler server không được đăng ký đồng thời.
 
 ## Cài đặt nhanh
 
@@ -65,7 +91,7 @@ Thư viện dùng package `jakarta.*`, Spring Framework 7 và Jackson 3 theo Spr
 ```kotlin
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("io.github.duongtran1702:atmin-library:2.0.0")
+    implementation("io.github.duongtran1702:atmin-library:2.1.0")
 }
 ```
 
@@ -74,7 +100,7 @@ dependencies {
 ```groovy
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-    implementation 'io.github.duongtran1702:atmin-library:2.0.0'
+    implementation 'io.github.duongtran1702:atmin-library:2.1.0'
 }
 ```
 
@@ -92,10 +118,21 @@ Khi project kế thừa Spring Boot parent hoặc import Spring Boot BOM:
     <dependency>
         <groupId>io.github.duongtran1702</groupId>
         <artifactId>atmin-library</artifactId>
-        <version>2.0.0</version>
+        <version>2.1.0</version>
     </dependency>
 </dependencies>
 ```
+
+Với WebFlux, thay starter MVC bằng:
+
+```groovy
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'io.github.duongtran1702:atmin-library:2.1.0'
+}
+```
+
+Xem cấu hình reactive đầy đủ trong [README-MICROSERVICES.md](README-MICROSERVICES.md).
 
 Sau khi thêm dependency, không cần thêm annotation:
 
@@ -162,7 +199,7 @@ return ResponseEntity.accepted()
 
 ### Status tùy chỉnh
 
-API cũ với `HttpStatus` vẫn giữ nguyên, đồng thời 2.0 nhận mọi `HttpStatusCode`:
+API cũ với `HttpStatus` vẫn giữ nguyên, đồng thời từ 2.0 nhận mọi `HttpStatusCode`:
 
 ```java
 ApiResponse<MyDto> response = ApiResponse.success(
@@ -219,7 +256,7 @@ return ResponseEntity.ok(
 );
 ```
 
-2.0 có factory ngắn hơn:
+Từ 2.0 có factory ngắn hơn:
 
 ```java
 return ResponseEntity.ok(
@@ -304,7 +341,7 @@ Import:
 import atmin.common.response.ApiErrorResponse;
 ```
 
-Cấu trúc giữ tương thích với 1.x:
+Các field cũ được giữ nguyên. Bản 2.1 thêm ba field tùy chọn; chúng không xuất hiện trong JSON của factory/exception cũ khi giá trị là `null`:
 
 ```java
 public class ApiErrorResponse {
@@ -315,6 +352,9 @@ public class ApiErrorResponse {
     private String path;
     private Map<String, String> errors;
     private String traceId;
+    private AtminErrorCode code; // nullable: mã ổn định cho client
+    private Boolean retryable;   // nullable: lỗi có phù hợp để retry không
+    private String service;      // nullable: logical service name, không tự suy ra hostname
 }
 ```
 
@@ -354,7 +394,7 @@ Map<String, String> errors = Map.of(
 
 ApiErrorResponse.validationError("/api/users", errors);
 
-// Bản 2.0: tùy chỉnh summary message
+// Từ bản 2.0: tùy chỉnh summary message
 ApiErrorResponse.validationError(
         "/api/users",
         "Dữ liệu đầu vào không hợp lệ",
@@ -374,7 +414,11 @@ Các exception 1.x được giữ nguyên package và constructor:
 | `ResourceNotFoundException` | 404 | Không tìm thấy resource |
 | `DuplicateResourceException` | 409 | Tạo resource bị trùng |
 | `ConflictException` | 409 | Xung đột trạng thái hoặc dữ liệu |
+| `RateLimitExceededException` | 429 | Client vượt giới hạn request |
+| `DownstreamServiceException` | 502 | Service phụ thuộc trả response lỗi/không hợp lệ |
 | `ServiceUnavailableException` | 503 | Dịch vụ phụ thuộc không sẵn sàng |
+| `CircuitBreakerOpenException` | 503 | Circuit breaker đang mở và từ chối lời gọi |
+| `GatewayTimeoutException` | 504 | Service phụ thuộc không phản hồi trước deadline |
 | `CloudStorageException` | 503 | Lỗi S3, GCS, Azure Blob hoặc storage khác |
 
 Ví dụ:
@@ -391,6 +435,14 @@ throw new DuplicateResourceException(
 );
 
 throw new ServiceUnavailableException("payment-service", true);
+
+throw new DownstreamServiceException("payment-service", 500);
+
+throw GatewayTimeoutException.forService("inventory-service");
+
+throw new RateLimitExceededException("Bạn thao tác quá nhanh", 30);
+
+throw CircuitBreakerOpenException.forService("catalog-service");
 ```
 
 Các constructor nhận `Throwable cause` được giữ lại để bảo toàn stack trace.
@@ -482,10 +534,20 @@ Tất cả thuộc tính dùng prefix `atmin.exceptions`.
 | `security-enabled` | `true` | Bật handler Security/JWT ở controller |
 | `security-filter-enabled` | `true` | Tạo AuthenticationEntryPoint và AccessDeniedHandler |
 | `storage-enabled` | `true` | Bật handler upload/storage |
+| `microservice-enabled` | `true` | Bật handler lỗi giao tiếp giữa các service |
+| `downstream-preserve-client-errors` | `true` | Giữ 400/404/409/422/429 từ downstream; các status khác được chuẩn hóa thành 502 |
+| `downstream-expose-service-name` | `false` | Cho phép trả logical service name do ứng dụng chủ động cung cấp |
 | `trace-id-mdc-key` | `traceId` | Key đọc trace ID từ SLF4J MDC |
+| `trace-id-header` | `X-Trace-Id` | Header nhận/trả trace ID trong WebFlux/Gateway |
+| `echo-trace-id-header` | `true` | Trả trace ID trong response header reactive |
+| `gateway-enabled` | `true` | Bật low-level handler khi Spring Cloud Gateway có mặt; đặt `false` trước khi đăng ký Gateway error handler riêng |
+| `gateway-order` | `-2` | Thứ tự của Gateway error handler |
 | `validation-failed` | `Validation failed` | Summary của validation error |
 | `malformed-request` | `Request body is malformed or unreadable.` | JSON/body không đọc được |
 | `missing-request-value` | `A required request value is missing.` | Thiếu parameter/part |
+| `downstream-service-error` | `A downstream service returned an unsuccessful response.` | Upstream trả 4xx/5xx |
+| `downstream-service-unavailable` | `A downstream service is temporarily unavailable.` | Lỗi kết nối, DNS hoặc TLS tới upstream |
+| `downstream-timeout` | `A downstream service did not respond in time.` | Upstream quá thời gian chờ |
 | `unexpected-error` | `An unexpected error occurred on the server.` | Public message cho 500 |
 | `access-denied` | `You do not have permission to access this resource.` | Lỗi 403 ở controller |
 | `file-too-large` | `File size exceeds the maximum allowed limit.` | Upload vượt giới hạn |
@@ -501,10 +563,20 @@ atmin:
     security-enabled: true
     security-filter-enabled: true
     storage-enabled: true
+    microservice-enabled: true
+    downstream-preserve-client-errors: true
+    downstream-expose-service-name: false
     trace-id-mdc-key: traceId
+    trace-id-header: X-Trace-Id
+    echo-trace-id-header: true
+    gateway-enabled: true
+    gateway-order: -2
     validation-failed: Dữ liệu đầu vào không hợp lệ
     malformed-request: JSON gửi lên không hợp lệ
     missing-request-value: Thiếu dữ liệu bắt buộc
+    downstream-service-error: Dịch vụ phụ thuộc trả về lỗi
+    downstream-service-unavailable: Dịch vụ phụ thuộc tạm thời không khả dụng
+    downstream-timeout: Dịch vụ phụ thuộc phản hồi quá chậm
     unexpected-error: Hệ thống đang gặp sự cố
     access-denied: Bạn không có quyền thực hiện thao tác này
     file-too-large: Tệp vượt quá dung lượng cho phép
@@ -533,11 +605,105 @@ atmin.exceptions.security-enabled=false
 atmin.exceptions.security-filter-enabled=false
 ```
 
+## Lỗi thường gặp trong microservice
+
+Microservice có thêm một lớp lỗi nằm giữa các service. Bản 2.1 giữ các field cũ, đồng thời có thể thêm `code`, `retryable`, `service` cho lỗi mới:
+
+| Nguồn lỗi | Response của API hiện tại | Ghi chú |
+|---|---:|---|
+| Downstream 400/404/409/422/429 qua `RestClient`, `RestTemplate`, `WebClient` | Giữ status | Có thể tắt bằng `downstream-preserve-client-errors=false`; 429 giữ `Retry-After` dạng số an toàn |
+| Downstream status khác | 502 | Không phát tán body lỗi nội bộ của upstream |
+| `ResourceAccessException` do timeout | 504 | Nhận diện timeout trong cause chain |
+| `ResourceAccessException` do connection/DNS/TLS | 503 | Upstream tạm thời không truy cập được |
+| `UnknownHostException` | 503 | DNS không phân giải được hostname/service name |
+| `ConnectException`, `NoRouteToHostException` | 503 | Connection refused hoặc không có route tới service |
+| `SocketTimeoutException`, `HttpTimeoutException` | 504 | Timeout thoát ra trực tiếp từ HTTP client/JDK |
+| `SSLException` / TLS handshake | 503 | Không trả certificate, hostname hoặc chi tiết hạ tầng |
+| `WebClientRequestException` do timeout | 504 | Dùng được khi ứng dụng MVC gọi downstream bằng `WebClient` |
+| `WebClientRequestException` do transport | 503 | Không biến ứng dụng thành WebFlux server |
+| `RateLimitExceededException` | 429 | Có thể kèm `Retry-After` theo giây |
+| `CircuitBreakerOpenException` | 503 | Trung lập với Resilience4j/Spring Retry |
+| `DownstreamServiceException` | 502 | Dùng khi tự chuyển lỗi từ Feign hoặc client khác |
+| `GatewayTimeoutException` | 504 | Dùng khi timeout đã được phát hiện ở service layer |
+
+Ví dụ với `RestClient` — nếu exception được để lan tới controller advice thì thư viện tự xử lý:
+
+```java
+OrderDto order = restClient.get()
+        .uri("http://order-service/api/orders/{id}", id)
+        .retrieve()
+        .body(OrderDto.class);
+```
+
+Ví dụ khi dùng OpenFeign hoặc client khác không phải dependency của thư viện:
+
+```java
+try {
+    return paymentClient.pay(request);
+} catch (FeignException ex) {
+    throw new DownstreamServiceException(
+            "payment-service",
+            ex.status(),
+            ex
+    );
+}
+```
+
+Ví dụ fallback circuit breaker:
+
+```java
+public PaymentResult paymentFallback(
+        PaymentRequest request,
+        Throwable cause) {
+    throw CircuitBreakerOpenException.forService(
+            "payment-service",
+            cause
+    );
+}
+```
+
+Rate limit có thời gian retry:
+
+```java
+throw new RateLimitExceededException(
+        "Vượt quá số request cho phép",
+        60
+);
+```
+
+Response sẽ có HTTP 429 và header:
+
+```http
+Retry-After: 60
+```
+
+Có thể tắt toàn bộ nhóm này mà không ảnh hưởng Core/Security/Storage:
+
+```properties
+atmin.exceptions.microservice-enabled=false
+```
+
+Nếu ứng dụng tự khai báo bean `MicroserviceExceptionHandler` hoặc `WebClientExceptionHandler`, auto-configuration sẽ nhường quyền cho bean đó.
+
+Ví dụ, hostname sai hoặc service chưa cùng Docker/Kubernetes network có thể tạo `UnknownHostException`. Thư viện trả 503 với public message an toàn; hostname và stack trace chỉ được ghi ở server:
+
+```json
+{
+  "status": 503,
+  "error": "Service Unavailable",
+  "message": "A downstream service is temporarily unavailable.",
+  "path": "/api/orders",
+  "traceId": "..."
+}
+```
+
+> Exception từ Kafka/RabbitMQ consumer không đi qua Spring MVC controller nên không thể được xử lý đúng bằng `@ControllerAdvice`. Với messaging, hãy cấu hình retry, dead-letter queue và error handler của broker/framework; sau đó dùng `traceId` để liên kết log.
+
 ## Spring Security và JWT
 
 ### Chỉ dùng Spring Security
 
-2.0 không bắt buộc JJWT để xử lý `AuthenticationException` và `AccessDeniedException`:
+Từ 2.0 không bắt buộc JJWT để xử lý `AuthenticationException` và `AccessDeniedException`:
 
 ```groovy
 implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -592,7 +758,7 @@ Vì lý do an toàn, lỗi authentication/JWT trả message cấu hình `securit
 
 ## Trace ID
 
-`ApiErrorResponse` luôn có `traceId`.
+`ApiErrorResponse` luôn có `traceId`. Filter của thư viện nhận và echo `X-Trace-Id` cho cả Servlet/MVC lẫn WebFlux; giá trị không hợp lệ hoặc dài quá 128 ký tự sẽ được thay bằng UUID an toàn.
 
 Thứ tự xử lý:
 
@@ -613,7 +779,7 @@ API 1.x vẫn còn:
 ApiErrorResponse.setMdcKey("correlationId");
 ```
 
-Với 2.0 nên ưu tiên property để IDE nhận diện và cấu hình tập trung. Không đặt `X-Request-Id` làm MDC key trừ khi ứng dụng đã chủ động đưa header đó vào MDC.
+Với dòng 2.x nên ưu tiên property để IDE nhận diện và cấu hình tập trung. Không đặt `X-Request-Id` làm MDC key trừ khi ứng dụng đã chủ động đưa header đó vào MDC.
 
 ## Tùy biến và ghi đè
 
@@ -678,7 +844,7 @@ spring.autoconfigure.exclude=atmin.common.config.AtminExceptionAutoConfiguration
 ### Bước 1: đổi version
 
 ```groovy
-implementation 'io.github.duongtran1702:atmin-library:2.0.0'
+implementation 'io.github.duongtran1702:atmin-library:2.1.0'
 ```
 
 ### Bước 2: dùng starter Spring Boot 4 mới
@@ -769,7 +935,7 @@ Các lệnh hữu ích:
 
 ## Đóng gói và phát hành
 
-Thư viện đã đặt version `2.0.0`. Bạn chỉ cần tự commit, push và publish khi sẵn sàng.
+Thư viện đã đặt version `2.1.0`. Bạn chỉ cần tự commit, push và publish khi sẵn sàng.
 
 ### Cấu hình credential
 
@@ -800,7 +966,7 @@ MAVEN_CENTRAL_PASSWORD
 File kết quả:
 
 ```text
-build/distributions/atmin-library-2.0.0-bundle.zip
+build/distributions/atmin-library-2.1.0-bundle.zip
 ```
 
 ### Upload bằng task có sẵn
@@ -821,21 +987,33 @@ src/main/java/atmin/common
 │   └── EnableAtminExceptionHandling.java
 ├── config
 │   ├── AtminExceptionAutoConfiguration.java
+│   ├── AtminReactiveExceptionAutoConfiguration.java
+│   ├── AtminServletTraceFilter.java
 │   ├── AtminExceptionHandlerRegistrar.java
 │   ├── AtminExceptionProperties.java
-│   └── SecurityExceptionConfig.java
+│   ├── SecurityExceptionConfig.java
+│   └── ReactiveSecurityExceptionConfig.java
 ├── exception
-│   ├── ... custom exceptions
+│   ├── ... custom exceptions 400–504
 │   └── handler
 │       ├── CoreExceptionHandler.java
 │       ├── SecurityExceptionHandler.java
 │       ├── SpringSecurityExceptionHandler.java
 │       ├── JwtExceptionHandler.java
 │       ├── ValidationExceptionHandler.java
+│       ├── MicroserviceExceptionHandler.java
+│       ├── WebClientExceptionHandler.java
 │       └── StorageExceptionHandler.java
+├── reactive
+│   ├── AtminReactiveTraceFilter.java
+│   ├── ReactiveCoreExceptionHandler.java
+│   └── AtminGatewayErrorWebExceptionHandler.java
+├── trace
+│   └── TraceIdResolver.java
 └── response
     ├── ApiResponse.java
     ├── ApiErrorResponse.java
+    ├── AtminErrorCode.java
     └── PageInfo.java
 ```
 
@@ -852,8 +1030,8 @@ Tài liệu bổ sung:
 
 Kiểm tra:
 
-1. Project là servlet Spring MVC, không phải WebFlux.
-2. Có `spring-boot-starter-webmvc`.
+1. Project dùng Spring MVC hoặc Spring WebFlux và application type được Spring Boot nhận diện đúng.
+2. Có đúng starter: `spring-boot-starter-webmvc` hoặc `spring-boot-starter-webflux`.
 3. `atmin.exceptions.enabled` không bị đặt thành `false`.
 4. Auto-configuration không nằm trong `spring.autoconfigure.exclude`.
 5. Không có custom bean `CoreExceptionHandler` khác.
@@ -891,6 +1069,10 @@ Nếu không dùng Spring Data, dùng `ApiResponse.paginated(...)` cùng `PageIn
 ### Trace ID luôn là UUID mới
 
 Điều này nghĩa là MDC chưa có giá trị ở thời điểm tạo response. Đảm bảo tracing/filter của ứng dụng đặt đúng key và `atmin.exceptions.trace-id-mdc-key` khớp với key đó.
+
+### Lỗi gọi service khác vẫn trả 500
+
+Kiểm tra exception gốc có bị service của bạn bắt và đổi thành `RuntimeException` hay không. Hãy để `RestClientResponseException`/`ResourceAccessException` lan tới handler, hoặc bọc exception của Feign/client khác bằng `DownstreamServiceException`, `GatewayTimeoutException` hay `CircuitBreakerOpenException`.
 
 ## License
 

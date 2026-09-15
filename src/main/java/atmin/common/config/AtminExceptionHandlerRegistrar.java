@@ -37,6 +37,10 @@ public class AtminExceptionHandlerRegistrar implements ImportSelector {
 
         // Core handlers are always imported — use the ControllerAdvice wrapper
         imports.add(CoreExceptionHandlerAdvice.class.getName());
+        imports.add(MicroserviceExceptionHandlerAdvice.class.getName());
+        if (isClassPresent("org.springframework.web.reactive.function.client.WebClientException")) {
+            imports.add(WebClientExceptionHandlerAdvice.class.getName());
+        }
         imports.add(AtminExceptionPropertiesConfiguration.class.getName());
 
         if (attributes != null) {

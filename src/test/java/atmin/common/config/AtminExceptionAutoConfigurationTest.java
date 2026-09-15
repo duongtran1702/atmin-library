@@ -2,10 +2,12 @@ package atmin.common.config;
 
 import atmin.common.exception.handler.CoreExceptionHandler;
 import atmin.common.exception.handler.JwtExceptionHandler;
+import atmin.common.exception.handler.MicroserviceExceptionHandler;
 import atmin.common.exception.handler.SecurityExceptionHandler;
 import atmin.common.exception.handler.SpringSecurityExceptionHandler;
 import atmin.common.exception.handler.StorageExceptionHandler;
 import atmin.common.exception.handler.ValidationExceptionHandler;
+import atmin.common.exception.handler.WebClientExceptionHandler;
 import atmin.common.annotation.EnableAtminExceptionHandling;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -27,7 +29,10 @@ class AtminExceptionAutoConfigurationTest {
     void registersExistingHandlersAndNewOptionalHandlers() {
         contextRunner.run(context -> {
             assertThat(context).hasSingleBean(AtminExceptionProperties.class);
+            assertThat(context).hasSingleBean(AtminServletTraceFilter.class);
             assertThat(context).hasSingleBean(CoreExceptionHandler.class);
+            assertThat(context).hasSingleBean(MicroserviceExceptionHandler.class);
+            assertThat(context).hasSingleBean(WebClientExceptionHandler.class);
             assertThat(context).hasSingleBean(SecurityExceptionHandler.class);
             assertThat(context).hasSingleBean(StorageExceptionHandler.class);
             assertThat(context).hasSingleBean(ValidationExceptionHandler.class);
@@ -59,6 +64,16 @@ class AtminExceptionAutoConfigurationTest {
     }
 
     @Test
+    void keepsWebClientIntegrationOptional() {
+        contextRunner
+                .withClassLoader(new FilteredClassLoader("org.springframework.web.reactive"))
+                .run(context -> {
+                    assertThat(context).hasSingleBean(MicroserviceExceptionHandler.class);
+                    assertThat(context).doesNotHaveBean(WebClientExceptionHandler.class);
+                });
+    }
+
+    @Test
     void canDisableAllAutoConfiguration() {
         contextRunner
                 .withPropertyValues("atmin.exceptions.enabled=false")
@@ -74,9 +89,12 @@ class AtminExceptionAutoConfigurationTest {
                 .withPropertyValues(
                         "atmin.exceptions.security-enabled=false",
                         "atmin.exceptions.security-filter-enabled=false",
+                        "atmin.exceptions.microservice-enabled=false",
                         "atmin.exceptions.storage-enabled=false")
                 .run(context -> {
                     assertThat(context).hasSingleBean(CoreExceptionHandler.class);
+                    assertThat(context).doesNotHaveBean(MicroserviceExceptionHandler.class);
+                    assertThat(context).doesNotHaveBean(WebClientExceptionHandler.class);
                     assertThat(context).doesNotHaveBean(SecurityExceptionHandler.class);
                     assertThat(context).doesNotHaveBean(StorageExceptionHandler.class);
                     assertThat(context).doesNotHaveBean("authenticationEntryPoint");
@@ -100,6 +118,8 @@ class AtminExceptionAutoConfigurationTest {
                 .withUserConfiguration(ManualConfiguration.class)
                 .run(context -> {
                     assertThat(context).hasSingleBean(CoreExceptionHandler.class);
+                    assertThat(context).hasSingleBean(MicroserviceExceptionHandler.class);
+                    assertThat(context).hasSingleBean(WebClientExceptionHandler.class);
                     assertThat(context).hasSingleBean(SecurityExceptionHandler.class);
                     assertThat(context).hasSingleBean(StorageExceptionHandler.class);
                 });

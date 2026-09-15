@@ -224,8 +224,13 @@ public class ApiErrorResponse {
     private String path;                   // URI gây lỗi
     private Map<String, String> errors;    // Lỗi từng field (validation) — nullable
     private String traceId;                // Trace ID phục vụ truy vết lỗi — luôn tự sinh/đọc từ MDC
+    private AtminErrorCode code;            // Mã máy đọc được — nullable
+    private Boolean retryable;              // Gợi ý retry — nullable
+    private String service;                 // Logical service name — nullable
 }
 ```
+
+Ba field cuối được thêm theo hướng tương thích: chúng dùng `NON_NULL`, nên mọi factory và luồng xử lý cũ vẫn tạo JSON như trước. Các handler microservice mới dùng `code` và `retryable`; `service` mặc định được ẩn.
 
 ### Factory Methods
 
@@ -289,7 +294,7 @@ Khóa MDC mặc định dùng để trích xuất `traceId` là `"traceId"`. N�
 
 ```java
 // Cấu hình một lần duy nhất tại hàm main hoặc class Config khởi tạo
-// Khuyên dùng trong atmin-library 2.0:
+// Khuyên dùng trong atmin-library 2.1:
 // atmin.exceptions.trace-id-mdc-key=correlationId
 
 // API 1.x này vẫn được hỗ trợ:

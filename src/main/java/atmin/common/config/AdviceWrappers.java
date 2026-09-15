@@ -2,10 +2,12 @@ package atmin.common.config;
 
 import atmin.common.exception.handler.CoreExceptionHandler;
 import atmin.common.exception.handler.JwtExceptionHandler;
+import atmin.common.exception.handler.MicroserviceExceptionHandler;
 import atmin.common.exception.handler.SecurityExceptionHandler;
 import atmin.common.exception.handler.SpringSecurityExceptionHandler;
 import atmin.common.exception.handler.StorageExceptionHandler;
 import atmin.common.exception.handler.ValidationExceptionHandler;
+import atmin.common.exception.handler.WebClientExceptionHandler;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -22,6 +24,26 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 @ConditionalOnProperty(prefix = "atmin.exceptions", name = "enabled", matchIfMissing = true)
 class CoreExceptionHandlerAdvice extends CoreExceptionHandler {
     CoreExceptionHandlerAdvice(AtminExceptionProperties properties) {
+        super(properties);
+    }
+}
+
+@ControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE + 5)
+@ConditionalOnClass(name = "org.springframework.web.client.RestClientException")
+@ConditionalOnProperty(prefix = "atmin.exceptions", name = "microservice-enabled", matchIfMissing = true)
+class MicroserviceExceptionHandlerAdvice extends MicroserviceExceptionHandler {
+    MicroserviceExceptionHandlerAdvice(AtminExceptionProperties properties) {
+        super(properties);
+    }
+}
+
+@ControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE + 5)
+@ConditionalOnClass(name = "org.springframework.web.reactive.function.client.WebClientException")
+@ConditionalOnProperty(prefix = "atmin.exceptions", name = "microservice-enabled", matchIfMissing = true)
+class WebClientExceptionHandlerAdvice extends WebClientExceptionHandler {
+    WebClientExceptionHandlerAdvice(AtminExceptionProperties properties) {
         super(properties);
     }
 }

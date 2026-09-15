@@ -1,4 +1,4 @@
-# Phát hành atmin-library 2.0.0
+# Phát hành atmin-library 2.1.0
 
 Tài liệu dành cho chủ thư viện. Người dùng bình thường chỉ cần phần cài đặt trong [README](../README.md).
 
@@ -10,7 +10,7 @@ Tài liệu dành cho chủ thư viện. Người dùng bình thường chỉ c�
 
 Xác nhận:
 
-- version trong `build.gradle` là `2.0.0`;
+- version trong `build.gradle` là `2.1.0`;
 - test và Javadoc thành công;
 - README không còn version cũ;
 - Git working tree chỉ có thay đổi dự định phát hành;
@@ -98,7 +98,7 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-    implementation 'io.github.duongtran1702:atmin-library:2.0.0'
+    implementation 'io.github.duongtran1702:atmin-library:2.1.0'
 }
 ```
 
@@ -119,7 +119,7 @@ Kiểm tra ít nhất:
 Kết quả:
 
 ```text
-build/distributions/atmin-library-2.0.0-bundle.zip
+build/distributions/atmin-library-2.1.0-bundle.zip
 ```
 
 Bundle chứa:
@@ -165,12 +165,12 @@ Có thể upload file ZIP ở bước 6 bằng giao diện Central Portal. Cách
 Kiểm tra artifact:
 
 ```text
-https://central.sonatype.com/artifact/io.github.duongtran1702/atmin-library/2.0.0
+https://central.sonatype.com/artifact/io.github.duongtran1702/atmin-library/2.1.0
 ```
 
 Sau đó:
 
-1. tạo Git tag `v2.0.0`;
+1. tạo Git tag `v2.1.0`;
 2. push tag;
 3. tạo GitHub Release từ changelog;
 4. chạy smoke test với dependency lấy từ Maven Central, không dùng `mavenLocal()`.
