@@ -415,4 +415,3 @@ Test matrix bao gồm MVC, WebFlux, auto-configuration, downstream client, trace
 - [Exception reference](docs/exceptions.md)
 - [Handler reference](docs/handlers.md)
 - [Publishing guide](docs/publishing.md)
-- [Kế hoạch cải tiến gốc](ATMIN_LIBRARY_2_1_IMPROVEMENTS.md)
