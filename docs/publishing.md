@@ -1,6 +1,6 @@
 # Phát hành atmin-library 2.1.0
 
-Tài liệu dành cho chủ thư viện. Người dùng bình thường chỉ cần phần cài đặt trong [README](../README.md).
+Tài liệu dành cho chủ thư viện. Người dùng bình thường chọn hướng dẫn cài đặt từ [trang tài liệu](../README.md).
 
 ## 1. Kiểm tra trước khi phát hành
 

@@ -19,7 +19,7 @@ Các thay đổi đáng chú ý của dự án được ghi tại đây.
 - Thêm mã lỗi ổn định, retry hint và logical service field dạng tùy chọn (`NON_NULL`).
 - Giữ các downstream client error 400/404/409/422/429 theo cấu hình, bảo toàn `Retry-After` dạng số và chuẩn hóa status còn lại thành 502.
 - Xử lý payload WebFlux vượt buffer thành 413 và lỗi TLS/SSL thành 503 an toàn.
-- Thêm `README-MICROSERVICES.md` độc lập cho WebFlux, Gateway và reactive tracing.
+- Thêm cụm `docs/reactive/` độc lập cho WebFlux, Gateway và reactive tracing.
 - Thêm công tắc `atmin.exceptions.microservice-enabled` và ba public message
   có thể tùy chỉnh.
 - Giữ nguyên API và JSON contract của 2.0.0.

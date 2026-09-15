@@ -1,6 +1,6 @@
 # Exception handlers
 
-Tài liệu này mô tả các handler của `atmin-library:2.1.0`. Hướng dẫn sử dụng đầy đủ nằm trong [README](../README.md).
+Tài liệu này mô tả các handler của `atmin-library:2.1.0`. Chọn [hướng dẫn MVC](mvc/USAGE.md) hoặc [hướng dẫn reactive](reactive/USAGE.md) theo web stack.
 
 ## Cơ chế đăng ký
 
@@ -90,7 +90,7 @@ Reactive Security cung cấp `ServerAuthenticationEntryPoint` và `ServerAccessD
 
 Gateway application muốn dùng `ErrorWebExceptionHandler` riêng phải đặt `atmin.exceptions.gateway-enabled=false`. Atmin không dò mọi bean cùng interface vì một application có thể có nhiều error handler với order khác nhau; property opt-out giúp tránh cạnh tranh thứ tự một cách tường minh.
 
-Trace ID reactive được lưu trong exchange attribute và Reactor Context, đồng thời có thể echo qua response header. Xem hướng dẫn đầy đủ tại [README Microservices](../README-MICROSERVICES.md).
+Trace ID reactive được lưu trong exchange attribute và Reactor Context, đồng thời có thể echo qua response header. Xem [hướng dẫn reactive đầy đủ](reactive/USAGE.md).
 
 ## Validation
 

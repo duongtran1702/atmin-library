@@ -1,8 +1,8 @@
 # atmin-library 2.1 cho Microservice, WebFlux và Gateway
 
-Đây là hướng dẫn độc lập, đầy đủ cho ứng dụng reactive, microservice và API Gateway. Người dùng WebFlux/Gateway chỉ cần file này để cài đặt, trả response, xử lý exception, cấu hình security, downstream client, trace ID và Gateway; không cần đọc `README.md`.
+Đây là hướng dẫn độc lập, đầy đủ cho ứng dụng reactive, microservice và API Gateway. Người dùng WebFlux/Gateway chỉ cần file này để cài đặt, trả response, xử lý exception, cấu hình security, downstream client, trace ID và Gateway.
 
-Nếu ứng dụng chạy Spring MVC/Servlet thay vì reactive, `README.md` là một hướng dẫn độc lập khác dành cho stack đó.
+Nếu ứng dụng chạy Spring MVC/Servlet thay vì reactive, dùng cụm tài liệu MVC tại [../mvc/README.md](../mvc/README.md).
 
 `atmin-library:2.1.0` dùng chung một contract cho cả MVC và WebFlux nhưng tách implementation theo web application type. Consumer vẫn dùng đúng artifact cũ; không có artifact giả định như `atmin-library-webflux`.
 
@@ -466,7 +466,7 @@ Test matrix bao gồm MVC, WebFlux, auto-configuration, downstream client, trace
 
 ## Tài liệu liên quan
 
-- [README monolithic/MVC và API chung](README.md)
-- [Exception reference](docs/exceptions.md)
-- [Handler reference](docs/handlers.md)
-- [Publishing guide](docs/publishing.md)
+- [Khả năng WebFlux/Gateway](README.md)
+- [Exception reference](../exceptions.md)
+- [Handler reference](../handlers.md)
+- [Publishing guide](../publishing.md)
